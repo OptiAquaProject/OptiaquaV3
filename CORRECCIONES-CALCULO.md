@@ -95,3 +95,30 @@ Dos efectos encadenados:
 C9 no se corrige aquí porque es una decisión de modelo/datos: hay que definir en qué unidad se guardan `ProfRaizInicial`/`ProfRaizMax` (parecen metros) y `ProfundidadCM` (cm), y ajustar la conversión (¿raíz × 100 para pasar a cm y usar `× 10` en la integración? ¿o dejar todo en metros?). Cambiarlo mueve **todas** las recomendaciones de riego, así que necesita el criterio del agrónomo y validación, no un parche. Es, con diferencia, el hallazgo de mayor impacto del cálculo: hoy la recomendación de riego depende **solo de la textura del suelo superficial**.
 
 > Nota: para esta prueba se fijaron en la tabla `Configuracion` las marcas `FechaUltimaActualizacionSiar` y `FechaUltimaActualizacionApiRiegos` a 2026-08-12, para que el balance no dispare llamadas de red al SIAR ni a la API de riegos (la BD es de 2025). Son inocuas; se pueden borrar si se quiere que el dev vuelva a refrescar del SIAR.
+
+---
+
+## C9 — corrección preparada (rama `fix-c9`)
+
+A petición, preparado el arreglo bajo el supuesto **raíz en metros → cm**. Un solo cambio, en `IntegraPorHorizontes`: la profundidad de raíz se pasa a cm (`× 100`) para compararla con `ProfundidadCM` (cm), y el factor de agua pasa de `× 1000` (correcto para metros) a `× 10` (correcto para cm). `LongitudRaiz` sigue publicándose en metros en la API; solo cambia la integración del suelo.
+
+Nota sobre la magnitud: el coeficiente total de profundidad no cambia (50 cm × 10 = 0,5 m × 1000 = 500), así que **para raíces dentro del perfil de suelo el efecto es pequeño** — lo que cambia es que ahora cada horizonte aporta su propia textura en vez de extrapolar la superficial. Donde cambia mucho es cuando la raíz supera el suelo medido.
+
+Antes/después sobre datos reales (balance completo, código del proyecto):
+
+| Unidad (raíz) | CC antes | CC después | TAW antes | TAW después | Δ TAW |
+|---|---|---|---|---|---|
+| 3122_R1 remolacha (0,5 m, suelo→92 cm) | 109,95 | 111,04 | 48,57 | 51,11 | +5 % |
+| 2733_R1 remolacha (0,5 m) | 116,45 | 114,94 | 57,15 | 56,26 | −2 % |
+| 2747_R4 remolacha (0,5 m) | 127,15 | 124,50 | 64,90 | 63,61 | −2 % |
+| 2766_1V viña (1,5 m, suelo→100 cm) | 390,34 | 268,90 | 201,56 | 143,75 | **−29 %** |
+
+En remolacha (raíz 0,5 m = 50 cm, dentro del perfil que llega a ~92 cm) el cambio es pequeño: ahora se usan de verdad los horizontes hasta 50 cm con su textura. **Con C9 corregido, C1 vuelve a tener efecto** (por eso se mueven un poco).
+
+El caso grande es la **viña**: raíz 1,5 m = 150 cm, pero el perfil de suelo solo llega a 100 cm. Antes se integraban 150 cm de textura superficial; ahora se integran los 100 cm reales (multi-horizonte) y se detiene ahí. CC y TAW bajan un 29 %.
+
+### Decisión pendiente (sub-caso raíz > suelo medido)
+
+Cuando la raíz es más profunda que el último horizonte con datos (viña), esta corrección **se detiene en el suelo medido** — no extrapola por debajo de la información disponible. La alternativa sería **prolongar la textura del último horizonte** hasta la profundidad de raíz. Son criterios agronómicos distintos con resultados distintos (la viña quedaría entre 269 mm —cap actual— y ~404 mm —extrapolando—). Hay que decidir cuál, e idealmente confirmar que `ProfRaizMax`/`ProfRaizInicial` están efectivamente en metros para todos los cultivos, no solo remolacha y viña.
+
+**Estado:** en rama `fix-c9`, sin fusionar, para validación.

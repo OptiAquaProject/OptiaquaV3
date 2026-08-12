@@ -423,25 +423,35 @@
 
         /// <summary>
         /// Integra un contenido de agua del suelo (capacidad de campo o punto de marchitez) desde
-        /// la superficie hasta la profundidad de raíz, horizonte a horizonte.
+        /// la superficie hasta la profundidad de raíz, horizonte a horizonte. Devuelve mm de agua.
         ///
-        /// DatosSuelo.ProfundidadCM es la profundidad ACUMULADA desde la superficie (el límite
-        /// inferior del horizonte), no su espesor. El espesor real de cada horizonte es la
-        /// diferencia con el límite del horizonte anterior. Antes el bucle usaba ProfundidadCM
-        /// como si fuese el espesor, con lo que con dos o más horizontes sobreponderaba los
-        /// profundos y podía no llegar al último; con un solo horizonte coincidían y no se veía.
+        /// UNIDADES (corrección C9): la profundidad de raíz (LongitudRaiz, ProfRaizInicial/Max)
+        /// está en METROS, mientras que DatosSuelo.ProfundidadCM está en CENTÍMETROS. Antes se
+        /// comparaban directamente, de modo que la raíz (0,5–1,5) nunca alcanzaba el primer límite
+        /// de horizonte (≈30 cm) y el recorrido se detenía SIEMPRE en el primer horizonte: todos
+        /// los horizontes inferiores quedaban sin usar y la recomendación de riego dependía solo de
+        /// la textura superficial. Aquí se pasa la raíz a cm (× 100) para trabajar toda la
+        /// integración en cm; el factor de agua pasa de × 1000 (correcto para metros) a × 10
+        /// (correcto para cm): 1 cm de suelo con contenido θ aporta θ × 10 mm de agua.
+        ///
+        /// DatosSuelo.ProfundidadCM es la profundidad ACUMULADA desde la superficie (límite inferior
+        /// del horizonte), no el espesor; el espesor real es la diferencia con el horizonte anterior.
+        ///
+        /// Si la raíz es más profunda que el último horizonte con datos, la integración se detiene en
+        /// el suelo medido (no se extrapola por debajo de la información disponible).
         /// </summary>
-        private static double IntegraPorHorizontes(double root, List<DatosSuelo> pParcelaSuelo, Func<DatosSuelo, double> contenido) {
+        private static double IntegraPorHorizontes(double rootMetros, List<DatosSuelo> pParcelaSuelo, Func<DatosSuelo, double> contenido) {
+            double rootCm = rootMetros * 100.0; // raíz en metros -> cm, para comparar con ProfundidadCM (cm)
             double ret = 0;
             double techo = 0; // límite superior del horizonte en curso (cm desde superficie)
             foreach (DatosSuelo horizonte in pParcelaSuelo) {
-                if (techo >= root)
+                if (techo >= rootCm)
                     break;
-                double baseHorizonte = horizonte.ProfundidadCM; // límite inferior (acumulado)
-                double hasta = Math.Min(baseHorizonte, root);
-                double espesor = hasta - techo;
+                double baseHorizonte = horizonte.ProfundidadCM; // límite inferior (acumulado, cm)
+                double hasta = Math.Min(baseHorizonte, rootCm);
+                double espesor = hasta - techo; // cm
                 if (espesor > 0)
-                    ret += espesor * 1000 * contenido(horizonte);
+                    ret += espesor * 10 * contenido(horizonte); // cm * 10 * θ = mm de agua
                 techo = baseHorizonte;
             }
             return ret;
