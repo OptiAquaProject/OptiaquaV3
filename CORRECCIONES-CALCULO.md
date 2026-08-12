@@ -75,3 +75,23 @@ Ambos siguen documentados en `AUDITORIA-CALCULO.md`.
 1. **Recalcular contra la base de datos real** y comparar un puñado de unidades de cultivo con multi-horizonte antes/después de C1 — es el cambio de mayor efecto y el que conviene confirmar con datos.
 2. Revisar que C3 y C4 no alteren clasificaciones que hoy se dan por buenas (si en producción los `IdUmbral` ya coincidían con la posición y el orden, no habrá cambio; si no, las salidas cambiarán, que es justo la corrección).
 3. Estas correcciones están **solo en `OptiAqua.Api`**. El proyecto original `WebApi/` mantiene los fallos; si se sigue usando en producción mientras dure la migración, habría que portarlas también.
+
+---
+
+## Validación contra la base de datos real (12/08/2026)
+
+Ejecutado el balance real (código del proyecto, no réplica) sobre cuatro unidades de cultivo reales con suelo multi-horizonte. **Corre sin fallar y produce valores con sentido físico** (viña 2766_1V, raíz 1,5 → CC 390 mm, TAW 202 mm; remolacha, raíz 0,5 → CC ~110 mm, TAW ~50 mm). La clasificación de estrés (C4) sale coherente y ordenada ("Estrés severo", "Exceso de agua", "sin estrés…"). No hay NaN ni excepciones. Las correcciones no rompen nada.
+
+### C9 — Unidades incoherentes raíz (m) vs suelo (cm): solo se usa el primer horizonte 🔴 NUEVO
+
+Al mirar los números salió a la luz un fallo mayor que C1. La profundidad de raíz sale en **metros** (`ProfRaizMax` = 0,5 remolacha / 1,5 viña, y `LongitudRaiz` no pasa de ahí), pero `DatosSuelo.ProfundidadCM` está en **centímetros** (30–100). La integración compara ambas directamente (`root` contra `ProfundidadCM`), así que como la raíz (0,5–1,5) nunca alcanza el primer límite de horizonte (≈30), **el recorrido se detiene siempre en el primer horizonte**:
+
+`CapacidadCampo = 109,95` con `LongitudRaiz = 0,5` = exactamente `0,5 × 1000 × 0,2199` (contenido del primer horizonte). Todos los horizontes por debajo del primero (hasta 10 en algunas unidades) **no intervienen nunca** en el cálculo.
+
+Dos efectos encadenados:
+- El factor `× 1000` de la integración es correcto para raíz en **metros**; por eso los mm salen en un rango plausible pese a todo. Es decir, la magnitud "cuadra" por casualidad, integrando solo la textura del horizonte superior en toda la zona radicular.
+- **C1 queda inerte con los datos actuales**: la corrección de espesor vs profundidad acumulada es correcta, pero no cambia el resultado porque ni el bucle viejo ni el nuevo llegan al segundo horizonte. C1 volverá a importar en cuanto se arregle C9.
+
+C9 no se corrige aquí porque es una decisión de modelo/datos: hay que definir en qué unidad se guardan `ProfRaizInicial`/`ProfRaizMax` (parecen metros) y `ProfundidadCM` (cm), y ajustar la conversión (¿raíz × 100 para pasar a cm y usar `× 10` en la integración? ¿o dejar todo en metros?). Cambiarlo mueve **todas** las recomendaciones de riego, así que necesita el criterio del agrónomo y validación, no un parche. Es, con diferencia, el hallazgo de mayor impacto del cálculo: hoy la recomendación de riego depende **solo de la textura del suelo superficial**.
+
+> Nota: para esta prueba se fijaron en la tabla `Configuracion` las marcas `FechaUltimaActualizacionSiar` y `FechaUltimaActualizacionApiRiegos` a 2026-08-12, para que el balance no dispare llamadas de red al SIAR ni a la API de riegos (la BD es de 2025). Son inocuas; se pueden borrar si se quiere que el dev vuelva a refrescar del SIAR.

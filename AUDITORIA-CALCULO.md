@@ -1,6 +1,6 @@
 # Auditoría en profundidad — el cálculo hídrico
 
-> **Estado:** seis de los ocho hallazgos (C1-C4, C6, C7) están corregidos en la rama `fix-calculo`; C5 y C8 quedan pendientes a propósito. Ver `CORRECCIONES-CALCULO.md`.
+> **Estado:** seis de los ocho hallazgos (C1-C4, C6, C7) están corregidos; C5 y C8 quedan pendientes a propósito. La validación contra la BD real (12/08/2026) destapó **C9**, más grave que todos: la profundidad de raíz está en metros y el suelo en cm, así que **solo se usa el primer horizonte** y la recomendación de riego depende solo de la textura superficial. C1 queda inerte hasta arreglar C9. Detalle y validación en `CORRECCIONES-CALCULO.md`.
 
 Fecha: 2026-08-12
 Ámbito: `LogicaAgronoma/BalanceHidrico.cs`, `LogicaAgronoma/CalculosHidricos.cs`, `Datos/DatosHidricos.cs`, `Utiles/ParametrosCalculos.cs` y los modelos implicados (`LineaBalance`, `DatosSuelo`, `UnidadCultivoCultivoEtapas`, `Cultivo`, `TipoEstresUmbral`).
