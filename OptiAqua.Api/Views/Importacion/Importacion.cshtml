@@ -1,0 +1,49 @@
+﻿
+<script>
+    var urlPost = '@Url.Action("ImportarUCPost", "importacion")';
+</script>
+
+<head>
+    <script type="text/javascript" src="~/ScriptsProjectV2/importacion.js"></script>
+</head>
+
+<div class="jumbotron">
+    <h1>OptiAqua</h1>
+    <p class="lead">Aplicación para la optimización del regadio</p>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h2>Importación de fichero para la creación masiva de unidades de culvivo.</h2>        
+        <p><a class="btn btn-outline-info" href="@Url.Action("especificacionesimportacion", "importacion")">Especificaciones Importación &raquo;</a></p>
+        <form class="md-form">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="NifRegante">Datos de las cuenta de administración</label>
+                    <input type="text" class="form-control" id="NifRegante" placeholder="Usuario">
+                </div>
+                <div class="form-group col-md-6 mt-2">
+                    <input type="password" class="form-control" id="PassRegante" placeholder="Contraseña">
+                </div>
+            </div>
+            <hr />
+            <div class="input-group ">
+                <div class="custom-file" style="width:600px">
+                    <input type="file" class="custom-file-input" id="IdFileName">
+                </div>
+                <div class="input-group-append">
+                    <button class="btn btn-outline-primary" type="button" onclick="OnImportar()">Importar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div id="TablaErrores">
+            </div>
+        </div>
+    </div>
+
+
+</div>

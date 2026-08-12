@@ -1,0 +1,100 @@
+﻿@{
+    var lMapaVersion = ViewBag.lMapaVersion as List<ItemMapaVersion>;
+}
+
+<script>
+    var urlPost = '@Url.Action("ImportarMapasPost", "importacion")';
+</script>
+
+<head>
+    <script type="text/javascript" src="~/ScriptsProjectV2/ImportacionMapas.js"></script>
+</head>
+
+
+<div class="jumbotron">
+    <h1>OptiAqua</h1>
+    <p class="lead">Aplicación para la optimización del regadio</p>
+</div>
+
+
+
+<div class="row">
+    <div class="col-md-12">
+        <h2>Cuenta de administración</h2>
+        <p class="lead">Tanto importar como eliminar mapas requiere una cuenta con permisos de administrador.</p>
+        <form class="md-form">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <input type="text" class="form-control" id="NifRegante" placeholder="Usuario">
+                </div>
+                <div class="form-group col-md-6 mt-2">
+                    <input type="password" class="form-control" id="PassRegante" placeholder="Contraseña">
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-12">
+        <h2>Lista de mapas importados.</h2>
+        <p class="lead">Lista de los mapas en optiaqua</p>
+
+        <table class="table">
+            <tr>
+                <td><b>Version</b></td>
+                <td><b>Nivel</b></td>
+                <td><b>Registros</b></td>
+                <td><b>Eliminar</b></td>
+            </tr>
+            @foreach (var mapa in lMapaVersion) {
+                <tr>
+                    <td>@mapa.IdVersion</td>
+                    <td>@mapa.Nivel</td>
+                    <td>@mapa.NumRegistros</td>
+                    <td>
+                        <button type="submit" class="btn btn-outline-danger" onclick="ConfirmarEliminacion('@mapa.IdVersion','@mapa.Nivel')">Eliminar versión</button>
+                    </td>
+                </tr>
+
+            }
+        </table>
+
+    </div>
+</div>
+
+
+<div class="row">
+    <div class="col-md-12">
+        <h2>Importación de mapas.</h2>
+        <p class="lead">
+            En esta sección puede importar nuevos mapas en formato .gpkg según especificación versión v2.<br />
+            Si se indica un mapa con una versión y nivel ya existente, se eliminarán anteriores datos de version y nivel<br />
+            Para hacer uso del mapa importado indique la versión en el Campo 'IdVersionMapa' en la tabla 'Temporada.'
+        </p>
+
+        <div class="mt-3 col-sm-4">
+            <label for="formFileBase" class="form-label">Version</label>
+            <input type="text" class="form-control" name="idVersion" id="formIdVersion">
+        </div>
+
+        <div class="mt-3 col-sm-4">
+            <label for="formFileBase" class="form-label">Nivel</label>
+            <input type="number" class="form-control" name="Nivel" id="formNivel">
+        </div>
+
+        <div class="mt-3 mb-3">
+            <label for="formFileCatastral" class="form-label">Selecciones fichero gpkg</label>
+            <input class="form-control" type="file" name="fileMapa" id="formFileMapa">
+        </div>
+
+        <div class="input-group mb-3">
+            <button class="btn btn-outline-success" type="submit" id="button-addon1" onclick="BtnImportar()">Importar mapa</button>
+        </div>
+
+    </div>
+</div>
+
+

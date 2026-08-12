@@ -1,0 +1,13 @@
+# Compilación .NET
+[Bb]in/
+[Oo]bj/
+*.user
+
+# Registro de incidencias generado en ejecución
+OptiAqua.Api/Logs/
+
+# Visual Studio
+.vs/
+
+# Secretos locales (van en user-secrets, nunca aquí)
+appsettings.*.local.json

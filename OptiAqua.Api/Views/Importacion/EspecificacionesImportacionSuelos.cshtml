@@ -1,0 +1,53 @@
+﻿<div class="jumbotron">
+    <h1>OptiAqua</h1>
+    <p class="lead">Aplicación para la optimización del regadio</p>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <h2>Consideraciones para la importación de análisis de suelos.</h2>
+
+        <div class="card">
+            <h5 class="card-header">Fichero de importación</h5>
+            <div class="card-body">
+                <h5 class="card-title">Especificación csv</h5>
+                <p class="card-text">Se debe de seleccinar un fichero de texto con formato CSV, con los campos separados por ';' y con cabecera.</p>
+                <p class="card-text">Puede descargar plantilla como ejemplo.</p>
+                <a href="~/Documentos/PlantillaImportacionAnalisisSuelos.csv" class="btn btn-info">Plantilla ejemplo</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h5 class="card-header">Descripción de los campos</h5>
+            <div class="card-body">
+
+                <h5 class="card-title">#</h5>
+                <p class="card-text">Número de línea, es útil para la depuración de errores</p>
+
+                <h5 class="card-title">IdUnidadCultivo</h5>
+                <p class="card-text">Es un campo alfanumérico clave para la unidad de cultivo</p>
+
+                <h5 class="card-title">Alias</h5>
+                <p class="card-text">Nombre amigable de la unidad de cultivo</p>
+
+                <h5 class="card-title">IdTemporada</h5>
+                <p class="card-text">Es un campo alfanumérico indicando la temporada Optiaqua</p>
+
+                <h5 class="card-title">IdParcelaInt</h5>
+                <p class="card-text">Lista separada por ',' con los números de las parcelas en la comunidad de regantes</p>
+
+                <h5 class="card-title">IdCultivo</h5>
+                <p class="card-text">El identificador del cultivo en Optiaqua</p>
+
+                <h5 class="card-title">Fecha siembra</h5>
+                <p class="card-text">Fechas siembra en forma dd/mm/aaaa</p>
+
+                <h5 class="card-title">IdTipoRiego</h5>
+                <p class="card-text">Códgigo Optiaqua del tipo de riego</p>
+
+                <h5 class="card-title">Superficie de la unidad de cueltivo</h5>
+                <p class="card-text">Si se indica valor 0 o no se indica se calcula como la suma de la superficies de las parcelas que contiene</p>
+
+            </div>
+        </div>
+    </div>
+</div>

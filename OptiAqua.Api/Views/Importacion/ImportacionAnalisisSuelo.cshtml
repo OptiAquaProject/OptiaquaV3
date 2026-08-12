@@ -1,0 +1,105 @@
+﻿<div class="jumbotron">
+    <h1>OptiAqua</h1>
+    <p class="lead">Aplicación para la optimización del regadio</p>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <h2>Importación de análisis de suelos</h2>
+        <p><a class="btn btn-info" href="https://optiaqua.dyndns.org/optiaqua/importacion/especificacionesimportacionAnalisisSuelo/">Especificaciones Importación &raquo;</a></p>
+        <form class="md-form">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="NifRegante">Nif del regante</label>
+                    <input type="text" class="form-control" id="NifRegante" placeholder="">
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="PassRegante">Contraseña</label>
+                    <input type="password" class="form-control" id="PassRegante" placeholder="">
+                </div>
+            </div>
+            <hr />
+            <div class="file-field">
+                <p>Seleccione fichero que desea importar</p>
+                <a class="btn-default .form-control-lg ">
+                    <input id="IdFileName" class="form-control col-lg-9 float-left" type="file">
+                </a>
+            </div>
+            <div class="float-left" style="padding-left:10px">
+                <button type="button" class="btn-default" onclick="OnImportar() ">Importar</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div id="TablaErrores">
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        function OnImportar() {
+            var file = document.getElementById("IdFileName").files[0];
+            var NifRegante = document.getElementById("NifRegante").value;
+            var PassRegante = document.getElementById("PassRegante").value;
+            var reader = new FileReader();
+            reader.readAsText(file);
+            reader.onload = function (event) {
+                enviar(NifRegante, PassRegante, event.target.result);
+            };
+        };
+
+        function enviar(nifRegante, passRegante, csv) {
+            //alert(csv);
+            var param = {"NifRegante": nifRegante, "PassRegante": passRegante, "CSV": csv };
+            $.ajax({
+                type: "POST",                
+                url: '/api/ImportaAnalisisSuelos',
+                data: param,
+                datatype: "json",
+                async: false,
+                contentType: 'application/x-www-form-urlencoded',
+                success: function (respuesta) {
+                    try {
+                        PresentaResultados(respuesta);
+                    } catch (err) {
+                        alert("Error en llamada ajax.");
+                    }
+                },
+                error: function () {
+                    alert("error");
+                }
+            });
+        }
+
+        function PresentaResultados(respuesta) {
+            var html = "<hr/>";
+            if (!Array.isArray(respuesta)) {
+                html = html + "<h3>Error:</h3>";                
+                html += respuesta;
+                document.getElementById("TablaErrores").innerHTML = html;
+                return;
+            }
+            if (respuesta.length == 0) {
+                html += "<h3>Importación finalizada sin errores.</h3>";
+                document.getElementById("TablaErrores").innerHTML = html;
+                return;
+            }
+            html += "<h3>Lista de errores de la importación</h3>";
+            html += "<table class='table table-hover'>";
+            html += "<tr>";
+            html += " <th scope='col'>#Lin</th>";
+            html += " <th scope='col'>Descripción del error</th>";
+            html += "</tr>";
+            for (i = 0; i < respuesta.length; i++) {
+                html += "<tr>";
+                html += "<td>" + respuesta[i].NLinea + "</td>";
+                html += "<td>" + respuesta[i].Descripcion + "</td>";
+                html += "</tr>";
+            }
+            html = html + "</table>"
+            document.getElementById("TablaErrores").innerHTML = html;
+        }
+    </script>
+</div>

@@ -1,0 +1,186 @@
+﻿@model DatosOptiaqua.DatosCuadroDeMando
+
+<style>
+    .oa-cabecera { background:#0d6efd; color:#fff; border-radius:.5rem; padding:1.5rem 2rem; margin-bottom:1.5rem; }
+    .oa-cabecera h1 { margin:0; font-size:2rem; }
+    .oa-cabecera p { margin:.25rem 0 0; opacity:.9; }
+    .oa-tarjeta { border:1px solid #dee2e6; border-left-width:5px; border-radius:.5rem; padding:1rem; height:100%; background:#fff; }
+    .oa-tarjeta .oa-titulo { font-size:.8rem; text-transform:uppercase; letter-spacing:.03em; color:#6c757d; margin-bottom:.35rem; }
+    .oa-tarjeta .oa-valor { font-size:1.9rem; font-weight:600; line-height:1.1; }
+    .oa-tarjeta .oa-detalle { font-size:.85rem; color:#6c757d; margin-top:.35rem; }
+    .oa-ok    { border-left-color:#198754; }
+    .oa-aviso { border-left-color:#ffc107; }
+    .oa-error { border-left-color:#dc3545; }
+    .oa-error .oa-valor { color:#dc3545; font-size:1.2rem; }
+    .oa-eventos { font-family:Consolas,monospace; font-size:.8rem; max-height:230px; overflow-y:auto; background:#f8f9fa; border:1px solid #dee2e6; border-radius:.5rem; padding:.75rem; }
+    .oa-eventos div { padding:.15rem 0; border-bottom:1px solid #ececec; }
+    .oa-eventos div:last-child { border-bottom:0; }
+</style>
+
+<div class="oa-cabecera">
+    <h1>OptiAqua</h1>
+    <p>Aplicación para la optimización del regadío</p>
+</div>
+
+@if (!Model.BaseDatosOperativa) {
+    <div class="alert alert-danger">
+        <h4 class="alert-heading">La base de datos no responde</h4>
+        <p class="mb-1">
+            El servicio sigue en pie y las páginas responden, pero no se pueden mostrar los datos
+            ni atender las peticiones que dependan de la base de datos.
+        </p>
+        <hr />
+        <p class="mb-0"><small><strong>Motivo:</strong> @Model.ErrorBaseDatos</small></p>
+        <p class="mb-0"><small>El detalle completo está en el registro del servidor (carpeta <code>Logs</code>).</small></p>
+    </div>
+}
+
+@* Progreso del recálculo. El proceso recorre todas las unidades de cultivo de todas las
+   temporadas y puede durar mucho, así que se muestra por dónde va y cuánto le queda. *@
+<div id="panelRecalculo" class="@(Model.Recalculo != null && Model.Recalculo.EnCurso ? "" : "d-none")">
+    <div class="card border-warning mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title mb-0">
+                    <span class="spinner-border spinner-border-sm text-warning me-2" role="status"></span>
+                    Recálculo en curso: <span id="rcTarea"></span>
+                </h5>
+                <span class="badge bg-warning text-dark" id="rcPorcentaje"></span>
+            </div>
+            <div class="progress mb-2" style="height:1.4rem">
+                <div id="rcBarra" class="progress-bar progress-bar-striped progress-bar-animated bg-warning text-dark"
+                     role="progressbar" style="width:0%">0 %</div>
+            </div>
+            <div class="row small text-muted">
+                <div class="col-md-3"><strong>Fase:</strong> <span id="rcFase">—</span></div>
+                <div class="col-md-3"><strong>Procesadas:</strong> <span id="rcProcesados">0</span> de <span id="rcTotal">0</span></div>
+                <div class="col-md-3"><strong>Transcurrido:</strong> <span id="rcTranscurrido">—</span></div>
+                <div class="col-md-3"><strong>Falta:</strong> <span id="rcRestante">—</span></div>
+            </div>
+            <div class="small text-muted mt-1">
+                <span id="rcUltimo"></span>
+                <span id="rcErrores" class="text-danger ms-2"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Recalculo != null && !Model.Recalculo.EnCurso && !string.IsNullOrEmpty(Model.Recalculo.UltimaEjecucion)) {
+    <p class="text-muted"><small><strong>Último recálculo —</strong> @Model.Recalculo.UltimaEjecucion</small></p>
+}
+
+@if (Model.Indicadores.Count > 0) {
+    <div class="row g-3">
+        @foreach (var indicador in Model.Indicadores) {
+            <div class="col-md-4 col-lg-3">
+                <div class="oa-tarjeta oa-@indicador.Estado">
+                    <div class="oa-titulo">@indicador.Titulo</div>
+                    <div class="oa-valor">@indicador.Valor</div>
+                    <div class="oa-detalle">@indicador.Detalle</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <p class="text-muted mt-2"><small>Datos a @Model.Generado.ToString("dd/MM/yyyy HH:mm:ss")</small></p>
+}
+
+@if (Model.UltimosEventos.Count > 0) {
+    <h4 class="mt-4">Últimos eventos registrados</h4>
+    <div class="oa-eventos">
+        @foreach (var evento in Model.UltimosEventos) {
+            <div>@evento</div>
+        }
+    </div>
+}
+
+<hr class="mt-4" />
+
+@* ------------------------------------------------------------------------
+   A partir de aquí, el contenido que ya tenía la página de inicio.
+   ------------------------------------------------------------------------ *@
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <h2>Estaciones climáticas en la Rioja</h2>
+        <p>Web en la que puede consultar los registro climáticos de las estaciones de La Rioja</p>
+        <p><a class="btn btn-outline-primary" href="http://www.larioja.org/agricultura/es/informacion-agroclimatica/datos-estaciones">Leer Más &raquo;</a></p>
+    </div>
+    <div class="col-md-6">
+        <h2>AIMCRA</h2>
+        <p>Asociación de Investigación para la mejora del cultivo de la remolacha azucarera.</p>
+        <p><a class="btn btn-outline-primary" href="http://www.aimcra.es">Leer más &raquo;</a></p>
+    </div>
+</div>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <h2>Descripción de la API</h2>
+        <p>Descripción de las funciones API definidas</p>
+        <p><a class="btn btn-outline-primary" href="/swagger">Ver más &raquo;</a></p>
+    </div>
+    <div class="col-md-6">
+        <h2>Integración de datos</h2>
+        <p>Proceso de carga masiva de datos</p>
+        <ul class="list-unstyled">
+            <li class="mb-2"><a class="btn btn-outline-primary" asp-controller="Importacion" asp-action="Importacion">Importación unidades de cultivo</a></li>
+            <li><a class="btn btn-outline-primary" asp-controller="Importacion" asp-action="ImportacionMapas">Importación mapas</a></li>
+        </ul>
+    </div>
+</div>
+
+@section scripts {
+<script>
+    // Mientras haya recálculo se consulta el progreso cada 3 segundos y se actualiza sólo el
+    // panel, sin recargar la página. Cuando termina, se recarga una vez para que las cifras
+    // del cuadro de mando reflejen los datos nuevos.
+    (function () {
+        var panel = document.getElementById('panelRecalculo');
+        if (!panel) return;
+        var estabaEnCurso = !panel.classList.contains('d-none');
+        var temporizador = null;
+
+        function pinta(e) {
+            document.getElementById('rcTarea').textContent = e.tarea || 'Recálculo';
+            document.getElementById('rcFase').textContent = e.fase || '—';
+            document.getElementById('rcProcesados').textContent = e.procesados;
+            document.getElementById('rcTotal').textContent = e.total;
+            document.getElementById('rcTranscurrido').textContent = e.transcurrido || '—';
+            document.getElementById('rcRestante').textContent = e.restante || '—';
+            document.getElementById('rcUltimo').textContent = e.ultimoElemento ? ('Última: ' + e.ultimoElemento) : '';
+            document.getElementById('rcErrores').textContent = e.errores > 0 ? (e.errores + (e.errores === 1 ? ' error' : ' errores')) : '';
+            var pct = e.total > 0 ? e.porcentaje : 0;
+            var barra = document.getElementById('rcBarra');
+            barra.style.width = pct + '%';
+            barra.textContent = pct + ' %';
+            document.getElementById('rcPorcentaje').textContent = e.total > 0 ? (pct + ' %') : 'en marcha';
+        }
+
+        function consulta() {
+            fetch('@Url.Action("ProgresoRecalculo", "Home")', { cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (e) {
+                    if (!e) return;
+                    if (e.enCurso) {
+                        panel.classList.remove('d-none');
+                        estabaEnCurso = true;
+                        pinta(e);
+                    } else {
+                        panel.classList.add('d-none');
+                        if (estabaEnCurso) {
+                            // Acaba de terminar: refrescar para ver las cifras actualizadas.
+                            clearInterval(temporizador);
+                            location.reload();
+                        }
+                    }
+                })
+                .catch(function () { /* si el servidor no responde, se reintenta al siguiente ciclo */ });
+        }
+
+        consulta();
+        temporizador = setInterval(consulta, 3000);
+    })();
+</script>
+}
