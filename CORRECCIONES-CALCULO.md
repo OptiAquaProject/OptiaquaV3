@@ -122,3 +122,18 @@ El caso grande es la **viña**: raíz 1,5 m = 150 cm, pero el perfil de suelo so
 Cuando la raíz es más profunda que el último horizonte con datos (viña), esta corrección **se detiene en el suelo medido** — no extrapola por debajo de la información disponible. La alternativa sería **prolongar la textura del último horizonte** hasta la profundidad de raíz. Son criterios agronómicos distintos con resultados distintos (la viña quedaría entre 269 mm —cap actual— y ~404 mm —extrapolando—). Hay que decidir cuál, e idealmente confirmar que `ProfRaizMax`/`ProfRaizInicial` están efectivamente en metros para todos los cultivos, no solo remolacha y viña.
 
 **Estado:** en rama `fix-c9`, sin fusionar, para validación.
+
+### Revisión de TODOS los valores de raíz (tabla Cultivo)
+
+Los 20 cultivos tienen `ProfRaizInicial`/`ProfRaizMax` en el rango 0,05–1,5: **todos en metros, ninguno cargado en cm**. El arreglo de C9 (raíz m→cm) es seguro para toda la tabla.
+
+Cruzado con la profundidad de suelo (perfiles de 60 a 140 cm; la mayoría 90–100), la sub-decisión "raíz > suelo medido" solo afecta materialmente a:
+
+| Cultivo | ProfRaizMax | Parcelas (UCxTemp) | ¿Raíz supera el suelo? |
+|---|---|---|---|
+| VIÑA | 1,5 m | 269 | Sí casi siempre (suelo ≤1,4 m) — el caso −29% |
+| Alfalfa ciclo largo | 1,0 m | 4 | A veces (perfiles <90 cm) |
+| Maíz ciclo medio | 0,6 m | 2 | No (suelo mínimo 60 cm) |
+| Resto (remolacha, patata, zanahoria, adormidera, guisante…) | ≤0,5 m | ~4.600 | No, cabe en cualquier perfil |
+
+Conclusión: para la práctica totalidad de las parcelas (raíz ≤0,5 m) el arreglo solo mejora el reparto multi-horizonte (C1, cambios pequeños). La decisión cap-vs-extrapolar se reduce esencialmente a las **269 parcelas de viña**.
