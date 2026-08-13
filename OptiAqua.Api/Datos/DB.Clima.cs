@@ -1,17 +1,13 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Net;
     using System.Net.Http;
     using webapi;
     using webapi.Utiles;
@@ -72,7 +68,6 @@
                 DateTime hastaFecha = DateTime.Today;
 
                 foreach (var idEstacion in lEstaciones) {
-                    //hastaFecha = new DateTime(2024, 2, 28);
                     List<DatoClimatico> datClima = Siar.DatosClimaticos.DatosClimaticosSiarList_V2(desdeFecha, hastaFecha, idEstacion);
                     DB.DatosClimaticosSave(datClima);
                     if (nDiasAtras + 1 != datClima.Count && datClima.Max(x => x.Fecha) != DateTime.Today) {
@@ -177,30 +172,6 @@
             return ret;
         }
 
-        /*
-        public static void ActulizaEstacionParcelas() {
-            using (var db = DB.ConexionOptiaqua) {
-                var lPar = db.Fetch<ParcelaPoco>();
-                foreach (var par in lPar) {
-                    int idEstacion = IdEstacionDefault;
-                    double lng = 0, lat = 0;
-                    if (par.Latitud == null || par.Longitud == null) {
-                        MapasCatastralesDatosLngLat(par, out lat, out lng);
-                    } else {
-                        var lngStr = par.Longitud.ToString().Replace(',', '.');
-                        var latStr = par.Latitud.ToString().Replace(',', '.');
-                        var sql = $" select codigoEMA from ZonasInfluenciaEMAsRegGeneral where geom.STContains( geometry::STGeomFromText('POINT({lngStr}  {latStr})', 4326)) =1";
-                        idEstacion = db.SingleOrDefault<int>(sql);
-                        if (idEstacion == 0)
-                            idEstacion = IdEstacionDefault;
-                    }
-                    var nExe = db.Execute($"update Parcela Set IdEstacion={idEstacion} where IdParcelaInt={par.IdParcelaInt}");
-                }
-
-            }
-        }
-        */
-
         internal static int EstacionDeParcela(int idParcelaInt) {
             using (var db = DB.ConexionOptiaqua) {
                 var par = db.SingleOrDefaultById<ParcelaPoco>(idParcelaInt);
@@ -242,19 +213,6 @@
                 return nombre;
             }
 
-        }
-
-        /// <summary>
-        /// PluviometriaSave.
-        /// </summary>
-        /// <param name="idTemporada">idTemporada<see cref="string"/>.</param>
-        /// <param name="idUnidadCultivo">idUnidadCultivo<see cref="string"/>.</param>
-        /// <param name="pluviometria">pluviometria<see cref="double"/>.</param>
-        public static void PluviometriaSave(string idTemporada, string idUnidadCultivo, double pluviometria) {
-            Database db = DB.ConexionOptiaqua;
-            UnidadCultivoCultivo unidadCultivoCultivo = db.Single<UnidadCultivoCultivo>("SELECT * FROM UnidadCultivoCultivo WHERE IdTemporada=@0 and idUnidadCultivo=@1");
-            unidadCultivoCultivo.Pluviometria = pluviometria;
-            db.Save(unidadCultivoCultivo);
         }
 
         /// <summary>

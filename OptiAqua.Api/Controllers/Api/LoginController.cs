@@ -1,4 +1,3 @@
-using System;
 using DatosOptiaqua;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -3,7 +3,6 @@
     using Models;
     using System;
     using System.Linq;
-    using System.Security.Claims;
     
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Authorization;
@@ -50,58 +49,6 @@
                 return BadRequest(ex.Message);
             }
         }
-
-
-        /// <summary>
-        /// Defines the <see cref="ParamPostHorizonte" />
-        /// </summary>
-        public class ParamPostHorizonte {
-            /// <summary>
-            /// Gets or sets the IdUnidadCultivo
-            /// </summary>
-            public int IdParcelaInt { set; get; }
-
-            /// <summary>
-            /// Gets or sets the IdTemporada
-            /// </summary>
-            public string Fecha { set; get; }
-
-            /// <summary>
-            /// Gets or sets the IdHorizonte
-            /// </summary>
-            public int IdHorizonte { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Limo
-            /// </summary>
-            public float Limo { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Arcilla
-            /// </summary>
-            public float Arcilla { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Arena
-            /// </summary>
-            public float Arena { set; get; }
-
-            /// <summary>
-            /// Gets or sets the MatOrg
-            /// </summary>
-            public float MatOrg { set; get; }
-
-            /// <summary>
-            /// Gets or sets the EleGru
-            /// </summary>
-            public float EleGru { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Prof
-            /// </summary>
-            public float Prof { set; get; }
-        }
-
 
         /// <summary>
         /// Lista datos ampliados de unidades de cultivos con filtros

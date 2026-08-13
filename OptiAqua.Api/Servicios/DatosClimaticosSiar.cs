@@ -1,10 +1,8 @@
 ﻿using Models;
-using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using Siar.Models;
 
@@ -61,48 +59,7 @@ namespace Siar {
 
 
 
-        /// <summary>
-        /// DatosClimaticosSiarList.
-        /// </summary>
-        /// <param name="desdeFecha">desdeFecha<see cref="DateTime"/>.</param>
-        /// <param name="hastaFecha">hastaFecha<see cref="DateTime"/>.</param>
-        /// <param name="idEstacion">idEstacion<see cref="int"/>.</param>
-        /// <returns><see cref="List{DatoClimatico}"/>.</returns>
-        public static List<DatoClimatico> DatosClimaticosSiarList_V1(DateTime desdeFecha, DateTime hastaFecha, int idEstacion) {
-            try {
-                string sURL;
-                //sURL Ejemplo = "http://apisiar.larioja.org/v1/datos-calculo-riego?estacion=501&fechaInicio=2017-08-07&fechaFin=2017-08-10";
-                sURL = "http://apisiar.larioja.org/v1/datos-calculo-riego?";
-                sURL += "estacion=" + idEstacion.ToString();
-                sURL += "&fechaInicio=" + desdeFecha.ToString("yyyy-MM-dd");
-                sURL += "&fechaFin=" + hastaFecha.ToString("yyyy-MM-dd");
-                WebClient wc = new System.Net.WebClient();
-                string json = wc.DownloadString(sURL);
-                RootApiSiar_V1 dataSiar = Newtonsoft.Json.JsonConvert.DeserializeObject<RootApiSiar_V1>(json);
-                List<DatoClimatico> lista = new List<DatoClimatico>();
-                if (dataSiar?.data == null)
-                    return lista;
-                foreach (DatoClimaticoApiSiar_V1 dat in dataSiar.data) {
-                    DatoClimatico dc = new DatoClimatico {
-                        IdEstacion = int.Parse(dat.Estacion),
-                        Fecha = Convert.ToDateTime(dat.Fecha),
-                        Eto = dat.ET0 == "NA" ? 0 : double.Parse(dat.ET0, CultureInfo.InvariantCulture),
-                        TempMedia = dat.TAirMd == "NA" ? 0 : double.Parse(dat.TAirMd, CultureInfo.InvariantCulture),
-                        HumedadMedia = dat.HRMn == "NA" ? 0 : double.Parse(dat.HRMn, CultureInfo.InvariantCulture),
-                        VelViento = dat.VWindMd == "NA" ? 0 : double.Parse(dat.VWindMd, CultureInfo.InvariantCulture),
-                        Precipitacion = dat.PAcum == "NA" ? 0 : double.Parse(dat.PAcum, CultureInfo.InvariantCulture)
-                    };
-                    lista.Add(dc);
-                }
-                return lista;
-            } catch {
-                string msgErr = "Error cargando datos climáticos para parametros.\n";
-                msgErr += "Desde Fecha: " + desdeFecha.ToShortDateString() + "\n";
-                msgErr += "Hasta Fecha: " + hastaFecha.ToShortDateString() + "\n";
-                msgErr += "Estación: " + idEstacion.ToString() + "\n";
-                throw new Exception(msgErr);
-            }
-        }
+
 
     }
 }

@@ -1,21 +1,16 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Net;
     using System.Net.Http;
     using webapi;
     using webapi.Utiles;
-    using static WebApi.DatosExtraController;
 
     /// <summary>
     /// Capa de acceso a datos de OptiAqua sobre SQL Server (librería NPoco).
@@ -298,9 +293,6 @@
             foreach (Dictionary<string, object> dic in lRet) {
                 string idUC = dic["IdUnidadCultivo"] as string;
                 var idTemporada = dic["IdTemporada"] as string;
-                //Console.WriteLine(idUC);
-                //  if (idUC=="2744_R1")
-                //      Debug.WriteLine(idUC);
                 if (role == "asesor") {
                     if (!lAsesor.Contains(idUC))
                         continue;

@@ -1,11 +1,8 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
-    using System.Collections.Generic;
     using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
@@ -37,7 +34,6 @@
         /// <summary>
         /// Gets the ConexionOptiaqua.
         /// </summary>
-        //static private Database dbConexion =null;
         public static Database ConexionOptiaqua {
             get {
                 

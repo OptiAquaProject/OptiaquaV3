@@ -1,7 +1,6 @@
 using DatosOptiaqua;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
 using webapi.Utiles;
 
 namespace WebApi {

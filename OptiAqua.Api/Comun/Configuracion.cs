@@ -1,5 +1,4 @@
-﻿using System;
-
+﻿
 namespace DatosOptiaqua {
     /// <summary>
     /// Clase dedicada a optener y guardar parámetros de la aplicación almacenados en la tabla configuracion
@@ -26,19 +25,9 @@ namespace DatosOptiaqua {
                 return null;        
         }
 
-        /// <summary>
-        /// SetString - Almacenar valor para el parámetro indicado
-        /// </summary>
-        /// <param name="parametro">The parametro<see cref="string"/></param>
-        /// <param name="valor">The valor<see cref="string"/></param>
-        public static void SetString(string parametro, string valor) => DB.ConfigSave(parametro, valor);
 
-        /// <summary>
-        /// SetDouble Almacenar valor para el parámetro indicado
-        /// </summary>
-        /// <param name="parametro">The parametro<see cref="string"/></param>
-        /// <param name="valor">The valor<see cref="double"/></param>
-        public static void SetDouble(string parametro, double valor) => DB.ConfigSave(parametro, valor.ToString());
+
+
 
         public static void SetDateTime(string parametro, DateTime valor) => DB.ConfigSave(parametro, valor.ToString());
 

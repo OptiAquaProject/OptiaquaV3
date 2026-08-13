@@ -2,7 +2,6 @@
     using Models;
     using System;
     using System.Collections.Generic;
-    using Utiles;
 
     /// <summary>
     /// Clase estática en la que se implementan las funciones hídricas.
@@ -72,8 +71,6 @@
                 dh.UnidadCultivoCultivoEtapasList[nEtapaBase0].FechaInicioEtapa = (DateTime)dh.UnidadCultivoCultivoEtapasList[nEtapaBase0].FechaInicioEtapaConfirmada;
             }
 
-            //ParametrosEtapasCalculos paramEtapas = dh.ParametrosEtapas;
-            //bool UsarCoberturaParaCambioFase = paramEtapas.GetBool(nEtapaBase0, "UsarCoberturaParaCambioFase");            
             bool UsarCoberturaParaCambioFase = !dh.UnidadCultivoCultivoEtapasList[nEtapaBase0].DefinicionPorDias;
 
             if (UsarCoberturaParaCambioFase == true) {
@@ -164,8 +161,6 @@
         /// The RaizLongitud.
         /// </summary>       
         public static double RaizLongitud(UnidadCultivoDatosHidricos dh, LineaBalance lb, LineaBalance lbAnt) {
-            //ParametrosEtapasCalculos paramEtapas = dh.ParametrosEtapas;
-            //double incT = lb.IntegralTermica - lbAnt.IntegralTermica;
             int nEtapaBase0 = lb.NumeroEtapaDesarrollo - 1;
             switch (dh.UnidadCultivoCultivoEtapasList[nEtapaBase0].IdTipoCalculoLongitudRaiz) {
                 case 1:// Sin definir formulas
@@ -227,37 +222,7 @@
             return ret;
         }
 
-        /// <summary>
-        /// The RaizLongitudDefPorFormulaCuadratica
-        /// </summary>
-        /// <returns>The <see cref="double"/>.</returns>
-        public static double RaizLongitudDefPorFormulaCuadratica(UnidadCultivoDatosHidricos dh, LineaBalance lb, LineaBalance lbAnt) {
-            double ret = 0;
-            double it = (double)lb.IntegralTermica;
-            double incT = (lb.IntegralTermica - lbAnt.IntegralTermica)??0;
-            double antLongRaiz = lbAnt.LongitudRaiz;
-            int nEtapaBase0 = lb.NumeroEtapaDesarrollo - 1;
 
-            double profRaizInicial = dh.CultivoProfRaizInicial;
-            double profRaizMax = dh.CultivoProfRaizMax;
-            double modRaizCoefA = dh.ParamGet("ModRaizCoefA",nEtapaBase0) ?? double.MaxValue;
-            double modRaizCoefB = dh.ParamGet("ModRaizCoefB",nEtapaBase0) ?? double.MaxValue;
-            double modRaizCoefC = dh.ParamGet("ModRaizCoefC",nEtapaBase0) ?? double.MaxValue;
-
-            if (antLongRaiz == 0) { //primer dia
-                ret = profRaizInicial;
-            } else {
-                double tasaCrecRaiz = modRaizCoefA * modRaizCoefB * Math.Exp(-modRaizCoefB * (it - modRaizCoefC)) / Math.Pow((1 + Math.Exp(-modRaizCoefB * (it - modRaizCoefC))), 2);
-                ret = antLongRaiz + incT * tasaCrecRaiz;
-            }
-
-            if (ret > profRaizMax) {
-                ret = profRaizMax;
-            }
-
-
-            return ret;
-        }
 
 
         public static double CoberturaDefPorDias(UnidadCultivoDatosHidricos dh, LineaBalance lb, LineaBalance lbAnt) {
@@ -287,7 +252,6 @@
             double incT = (lb.IntegralTermica - lbAnt.IntegralTermica)??0;
             int nEtapaBase0 = lb.NumeroEtapaDesarrollo - 1;
 
-            //ParametrosEtapasCalculos paramEtapas = dh.UnidadCultivoCultivoEtapasParametrosList;
             double itEmergencia = dh.CultivoIntegralEmergencia;
             double? modCobCoefA = dh.ParamGet("ModCobCoefA",nEtapaBase0) ?? 0;
             double? ModCobCoefB = dh.ParamGet("ModCobCoefB",nEtapaBase0) ?? double.MaxValue;
@@ -319,7 +283,6 @@
             double incT = (lb.IntegralTermica - lbAnt.IntegralTermica) ?? 0;
             int nEtapaBase0 = lb.NumeroEtapaDesarrollo - 1;
 
-            //ParametrosEtapasCalculos paramEtapas = dh.ParametrosEtapas;
             double itEmergencia = dh.CultivoIntegralEmergencia;
             double modCobCoefA = dh.ParamGet("ModCobCoefA",nEtapaBase0) ?? double.MaxValue;
             double modCobCoefB = dh.ParamGet("ModCobCoefB",nEtapaBase0) ?? double.MaxValue;
@@ -414,7 +377,6 @@
                 double tasaCrecAlt = modAltCoefA * modAltCoefB * Math.Exp(-modAltCoefB * (it - modAltCoefC)) / Math.Pow((1 + Math.Exp(-modAltCoefB * (it - modAltCoefC))), 2);
                 ret = lbAnt.AlturaCultivo + incT * tasaCrecAlt;
             }
-            //}
             if (alturaFinal != null && alturaFinal > 0 && ret > alturaFinal)
                 ret = (double)alturaFinal;
 
@@ -669,24 +631,9 @@
             return ret;
         }
 
-        public static double ConvertirIndiceEstresEnContenidoAguaDr(double indiceEstres, double raw, double taw, double CC, double PM) {
-            double drIndiceEstres = 0;
-            if (indiceEstres < 0)
-                drIndiceEstres = taw - (1 + indiceEstres) * (taw - raw);
-            else
-                drIndiceEstres = raw * (1 - indiceEstres);
-            return (drIndiceEstres);
 
-        }
 
-        public static double ConvertirIndiceEstresEnContenidoAguaRefZero(double indiceEstres, double raw, double taw, double CC, double PM) {
-            double drIndiceEstres = 0;
-            if (indiceEstres < 0)
-                drIndiceEstres = taw - (1 + indiceEstres) * (taw - raw);
-            else
-                drIndiceEstres = raw * (1 - indiceEstres);
-            return (CC - drIndiceEstres);
-        }
+
 
         public static double ConvertirIndiceEstresEnContenidoAguaRefPM(double indiceEstres, double raw, double taw, double CC, double PM) {
             double drIndiceEstres = 0;
@@ -730,17 +677,7 @@
             return ret > 0 ? ret : 0;
         }
 
-        /// <summary>
-        /// Calcula la recomención del Riego en tiempo (Horas).
-        /// </summary>
-        /// <param name="raw">.</param>
-        /// <param name="nEtapa">.</param>
-        /// <param name="driEnd">.</param>
-        /// <param name="v1">.</param>
-        /// <param name="v2">.</param>
-        /// <param name="v3">.</param>
-        /// <returns>.</returns>
-        public static double RecomendacionRiegoHr(double raw, int nEtapa, double driEnd, int v1, double v2, int v3) => double.NaN;
+
 
         /// <summary>
         /// Incremento de temperatura efectivo.
@@ -932,8 +869,6 @@
             lb.UmbralSuperiorRiegoOptimoRefPM = ConvertirIndiceEstresEnContenidoAguaRefPM(dh.UmbralSuperiorRiego(lb.NumeroEtapaDesarrollo), lb.AguaFacilmenteExtraible, lb.AguaDisponibleTotal, lb.CapacidadCampo, lb.PuntoMarchitez);
             lb.UmbralInferiorRiegoOptimoRefPM = ConvertirIndiceEstresEnContenidoAguaRefPM(dh.UmbralOptimoRiego(lb.NumeroEtapaDesarrollo), lb.AguaFacilmenteExtraible, lb.AguaDisponibleTotal, lb.CapacidadCampo, lb.PuntoMarchitez);
 
-            //lb.UmbralInferiorOptimo = limiteInferior;
-            //lb.UmbralInferiorRiego = limiteSuperior;
             return lb;
         }
 

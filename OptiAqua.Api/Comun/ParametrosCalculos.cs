@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
@@ -21,17 +20,5 @@ namespace Utiles {
         }
 
     }
-    public class ParametrosCultivoCalculos : Dictionary<string, double> {
-        public double? Get(string parametro) {
-            if (this.TryGetValue(parametro, out var ret))
-                return ret;
-            return null;
-        }
-        public bool GetBool(string parametro) {
-            if (this.TryGetValue(parametro, out var ret))
-                return ret > 0 ? true : false;
-            return false;
-        }
 
-    }
 }

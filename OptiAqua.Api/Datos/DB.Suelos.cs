@@ -1,17 +1,13 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Net;
     using System.Net.Http;
     using webapi;
     using webapi.Utiles;
@@ -60,33 +56,6 @@
                 }
             }
             return ret;
-        }
-
-        public static MapaSueloPoco Clone(MapaSueloPoco item) {
-            var newPoco = new MapaSueloPoco {
-                HS_ARCILLA_Porc = item.HS_ARCILLA_Porc,
-                HS_ESPESOR_cm = item.HS_ESPESOR_cm,
-                HS_ARENA_Porc = item.HS_ARENA_Porc,
-                Geom = item.Geom,
-                HS_EGRUESO_Porc = item.HS_EGRUESO_Porc,
-                HS_LIMO_Porc = item.HS_LIMO_Porc,
-                HS_MATORG_Porc = item.HS_MATORG_Porc,
-                HS_TEXTURA = item.HS_TEXTURA,
-                ID = item.ID,
-                IdMapaSuelo = item.IdMapaSuelo,
-                IdVersion = item.IdVersion,
-                Nivel = item.Nivel,
-                OBSERVACIONES = item.OBSERVACIONES,
-                PROF_EFECTIVA_cm = item.PROF_EFECTIVA_cm,
-                REF_CATAST = item.REF_CATAST,
-                SC_ARCILLA_Porc = item.SC_ARCILLA_Porc,
-                SC_ARENA_Porc = item.SC_ARENA_Porc,
-                SC_EGRUESO_Porc = item.SC_EGRUESO_Porc,
-                SC_ESPESOR_cm = item.SC_ESPESOR_cm,
-                SC_LIMO_Porc = item.SC_LIMO_Porc,
-                SC_MATORG_Porc = item.SC_MATORG_Porc
-            };
-            return newPoco;
         }
 
         private static double? DatosElemtosGrusosEnHorizonte(List<DatosSueloDB> lDS, double h) {
@@ -299,42 +268,6 @@
             return ret;
         }
 
-        /// <summary>
-        /// Retorna los datos del suelo para el horizonte indicado.
-        /// Si horizonte=="ALL" retorna todos.
-        /// </summary>
-        /// <param name="idParcelaInt">.</param>
-        /// <param name="idHorizonte">.</param>
-        /// <returns>.</returns>
-        public static List<ParcelaSuelo> PacelaHorizonte(int idParcelaInt, string idHorizonte) {
-            List<ParcelaSuelo> ret = null;
-            Database db = DB.ConexionOptiaqua;
-            if (idHorizonte == "ALL")
-                ret = db.Fetch<ParcelaSuelo>("Select * from ParcelaSuelo where IdParcelaInt=@0 ", idParcelaInt);
-            else
-                ret = db.Fetch<ParcelaSuelo>("Select * from ParcelaSuelo where IdParcelaInt =@0 and idHorizonte=@1 ", idParcelaInt, int.Parse(idHorizonte));
-            return ret;
-        }
-
-        public static void ParcelaSueloSave(int idParcelaInt, int idHorizonte, double limo, double arcilla, double arena, double matOrg, double eleGru, double prof) {
-            try {
-                Database db = DB.ConexionOptiaqua;
-                ParcelaSuelo ps = new ParcelaSuelo {
-                    IdParcelaInt = idParcelaInt,
-                    IdHorizonte = idHorizonte,
-                    Limo = limo,
-                    Arcilla = arcilla,
-                    Arena = arena,
-                    MateriaOrganica = matOrg,
-                    ElementosGruesos = eleGru,
-                    ProfuncidadCM = prof
-                };
-                db.Save(ps);
-            } catch (Exception ex) {
-                throw new Exception("Error dando de alta horizonte.\n" + ex.Message);
-            }
-        }
-
         internal static List<DatosSuelo> SueloUnidadCultivoTemporada(string idUnidadCultivo, string idTemporada) {
             using (var db = DB.ConexionOptiaqua) {
                 var ret = db.Fetch<DatosSuelo>($"Select * from SueloUnidadCultivoTemporada where IdUC='{idUnidadCultivo}'  and IdTemporada='{idTemporada}' ");
@@ -428,19 +361,5 @@
             return ret;
         }
 
-        static public List<DatosSuelo> ValoresDeSueloPorDefectoLaRioja(int idParcelaInt) {
-            var ret = new List<DatosSuelo>();
-            var dsLaRioja = new DatosSuelo {
-                IdParcelaInt = idParcelaInt,
-                ProfundidadCM = 100,
-                Arcilla = 33.3 / 100.0,
-                Arena = 55.0 / 100.0,
-                Limo = 24.65 / 100.0,
-                ElementosGruesos = 15.0 / 100.0,
-                MateriaOrganica = 1.2 / 100.0
-            };
-            ret.Add(dsLaRioja);
-            return ret;
-        }
     }
 }

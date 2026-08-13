@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
@@ -16,7 +15,6 @@ namespace DatosOptiaqua {
             var lEmails = email.Split(',', ';').ToList();
             var lTo = new List<MailboxAddress>();
             lEmails.ForEach(x => lTo.Add(new MailboxAddress("", x)));
-            //emailMessage.To.Add(new MailboxAddress("", email));
             emailMessage.To.AddRange(lTo);
             emailMessage.Subject = subject;
             emailMessage.Body = new TextPart("html") { Text = bodyHtml };

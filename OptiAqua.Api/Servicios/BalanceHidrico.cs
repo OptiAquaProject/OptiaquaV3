@@ -2,7 +2,6 @@
     using Models;
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Linq;
     using webapi.Utiles;
 
@@ -282,15 +281,11 @@
         private void CalculaBalance(bool actualizaEtapas, DateTime fechaFinalEstudio) {
             LineaBalance lbAnt = new LineaBalance();
             DateTime fecha = unidadCultivoDatosHidricos.FechaSiembra();
-            //DateTime fechaFinalEstudio = unidadCultivoDatosHidricos.FechaFinalDeEstudio();
             int diasDesdeSiembra = 1;
             if (unidadCultivoDatosHidricos.nEtapas <= 0)
                 throw new Exception("No se han definido etapas para la unidad de cultivo: " + unidadCultivoDatosHidricos.IdUnidadCultivo);
             while (fecha <= fechaFinalEstudio && fecha <= DateTime.Today) {
                 LineaBalance lineaBalance = null;
-                //if (fecha == new DateTime(2021, 06, 28))
-                //    fecha = fecha;
-                //Debug.Print(fecha.ToShortDateString());
                 lineaBalance = CalculosHidricos.CalculaLineaBalance(unidadCultivoDatosHidricos, lbAnt, fecha);
                 lineaBalance.DiasDesdeSiembra = diasDesdeSiembra++;
                 LineasBalance.Add(lineaBalance);

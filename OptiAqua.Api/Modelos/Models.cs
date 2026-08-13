@@ -1,5 +1,4 @@
 ﻿using NPoco;
-using Org.BouncyCastle.Crypto;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -71,19 +70,6 @@ namespace Models {
         public double ProfRaizInicial { get; set; }
         public double ProfRaizMax { get; set; }
         public double IntegralEmergencia { get; set; }
-        //public string ParametrosJson { get; set; }
-         //     public double ModCobCoefA { get; set; }
-         //     public double ModCobCoefB { get; set; }
-         //     public double? ModCobCoefC { get; set; }
-         //     public double ModAltCoefA { get; set; }
-         //     public double ModAltCoefB { get; set; }
-         //     public double? ModAltCoefC { get; set; }
-         //     public double ModRaizCoefA { get; set; }
-         //     public double ModRaizCoefB { get; set; }
-         //     public double? ModRaizCoefC { get; set; }
-        //public double? AlturaInicial { get; set; }
-        //public double? AlturaFinal { get; set; }
-        //public int EtapaInicioRiego { get; set; }
     }
 
     [TableName("UnidadCultivoParcela")]
@@ -134,19 +120,7 @@ namespace Models {
     }
 
 
-    // Esta tabla contiene los datos del suelo proporcionados por la comunidad de regantes. Se les da máxima prioridad
-    [TableName("ParcelaSuelo")]
-    [PrimaryKey("IdParcelaInt,IdHorizonte", AutoIncrement = false)]
-    public class ParcelaSuelo {
-        public int IdParcelaInt { get; set; }
-        public int IdHorizonte { get; set; }
-        public double ProfuncidadCM { get; set; }
-        public double ElementosGruesos { get; set; }
-        public double Limo { get; set; }
-        public double Arcilla { get; set; }
-        public double Arena { get; set; }
-        public double MateriaOrganica { get; set; }
-    }
+
     // Esta tabla se crea en la importación de los mapas o conla funcion RecearSuelos 
     // Se ha de recalcular tras la modificación de la tabla ParcelaSuelo
     // Es una tabla para optimizar rendimiento
@@ -215,14 +189,7 @@ namespace Models {
         
     }
 
-    [TableName("Paraje")]
-    [PrimaryKey("IdParaje", AutoIncrement = false)]
-    public class ParajePoco {
-        public int IdParaje { get; set; }
-        public string IdProvincia { get; set; }
-        public int? IdMunucipio { get; set; }
-        public string Paraje { get; set; }
-    }
+
 
     [TableName("UnidadCultivoCultivo")]
     [PrimaryKey("IdUnidadCultivo,IdTemporada", AutoIncrement = false)]
@@ -389,8 +356,6 @@ namespace Models {
         public string DescripcionEstres { set; get; }
         public string ColorEstres { set; get; }
 
-        //public double UmbralInferiorOptimo { set; get; }
-        //public double UmbralInferiorRiego { set; get; }
         public double UmbralSuperiorRiegoOptimoRefPM { get; internal set; }
         public double UmbralInferiorRiegoOptimoRefPM { get; internal set; }
     }
@@ -590,27 +555,11 @@ namespace Models {
         public string Color { get; set; }
     }
 
-    public class ParamPostParcelaSuelo {
-        public string Fecha { set; get; }
-        public string IdParcelaInt { set; get; }
-        public string IdSueloTipo { set; get; }
-    }
 
-    //Establecer la pluviometria para una unidad de cultivo.
-    public class ParamPostPluviometria {
-        public string Fecha { set; get; }
-        public string IdUnidadCultivo { set; get; }
-        public double Valor { set; get; }
-    }
 
-    public class ParamPostUnidadCultivoCultivo {
-        public string IdUnidadCultivo { set; get; }
-        public string Fecha { set; get; }
-        public int IdCultivo { set; get; }
-        public int IdRegante { set; get; }
-        public int IdTipoRiego { set; get; }
-        public string FechaSiembra { set; get; }
-    }
+
+
+
 
     public class UnidadCultivoConSuperficieYGeoLoc {
         public string IdUnidadCultivo { get; set; }
@@ -694,16 +643,6 @@ namespace Models {
     }
 
     
-    public class SigPacDBPoco {
-        public string id { get; set; }
-        public int provincia { get; set; }
-        public int municipio { get; set; }
-        public int poligono { get; set; }
-        public int parcela { get; set; }
-        public int recinto { get; set; }
-        public decimal superficie { get; set; }
-        public string geom { get; set; }
-        public string wkt { get; set; }
-    }
+
 }
 

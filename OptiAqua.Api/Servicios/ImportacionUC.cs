@@ -67,63 +67,6 @@
         }
 
         /// <summary>
-        /// Defines the <see cref="ImportItemAnalisisSuelo" />.
-        /// </summary>
-        public class ImportItemAnalisisSuelo {
-
-            public int NLinea { set; get; }
-            /// <summary>
-            /// Gets or sets the Temporada.
-            /// </summary>
-            public string Temporada { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Provincia.
-            /// </summary>
-            public int Provincia { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Municipio.
-            /// </summary>
-            public int Municipio { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Poligono.
-            /// </summary>
-            public int Poligono { set; get; }
-
-            /// <summary>
-            /// Gets or sets the IdParcelaIntList.
-            /// </summary>
-            public List<int> IdParcelaIntList { set; get; }
-
-            /// <summary>
-            /// Gets or sets the ElementoGruesos.
-            /// </summary>
-            public double ElementoGruesos { set; get; }
-
-            /// <summary>
-            /// Gets or sets the MateriaOrganica.
-            /// </summary>
-            public double MateriaOrganica { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Arcilla.
-            /// </summary>
-            public double Arcilla { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Arena.
-            /// </summary>
-            public double Arena { set; get; }
-
-            /// <summary>
-            /// Gets or sets the Limo.
-            /// </summary>
-            public double Limo { set; get; }
-        }
-
-        /// <summary>
         /// Defines the <see cref="ErrorItem" />.
         /// </summary>
         public class ErrorItem {
@@ -136,11 +79,6 @@
             /// Gets or sets the Descripcion.
             /// </summary>
             public string Descripcion { set; get; }
-        }
-
-        class itemClienteIds {
-            public int ID_FARMER { set; get; }
-            public int ID_GADMIN { set; get; }
         }
 
         internal static List<ErrorItem> ImportarUcFromExcel(string nif, string pass, List<ImportItemUCExcel> lineas,out int nImportados) {
@@ -252,7 +190,6 @@
                         IdEstacion= idEstacion,
                         IdTipoRiego = linea.IdTipoRiego
                     };
-                    //Importar(item, param.IdTemporada, param.IdTemporadaAnterior);
                     lItemUC.Add(item);
                 continue_for:
                     { }// noop
@@ -333,14 +270,6 @@
         /// <param name="idTemporada">The idTemporada<see cref="string"/>.</param>
         /// <param name="superficieM2">The superficieM2<see cref="double"/>.</param>
         private static void UnidadCultivoSuperficieSave(Database db, string idUnidadCultivo, string idTemporada, double superficieM2) {
-            /*
-            UnidadCultivoSuperficie r = new UnidadCultivoSuperficie {
-                IdTemporada = idTemporada,
-                IdUnidadCultivo = idUnidadCultivo,
-                SuperficieM2 = superficieM2
-            };
-            db.Save(r);
-            */
             UnidadCultivoCultivo ucc = db.SingleOrDefault<UnidadCultivoCultivo>("WHERE IdUnidadCultivo=@0 AND IdTemporada=@1", idUnidadCultivo, idTemporada);
             if (ucc != null) {
                 ucc.SuperficieM2 = superficieM2;
@@ -435,91 +364,5 @@
             }
         }
 
-        /*
-        /// <summary>
-        /// Importación del fichero csv con los datos de los análisis de suelos.
-        /// </summary>
-        /// <param name="param">.</param>
-        /// <returns>.</returns>
-        internal static List<ErrorItem> ImportarAnalisisSuelos(ImportaAnalisisCultivoPost param) {
-            string csv = param.CSV;
-            int nLinea = 1;
-            List<ErrorItem> lErrores = new List<ErrorItem>();
-            string[] lineas = csv.Split('\n');
-            foreach (string linea in lineas) {
-                try {
-                    if (linea == lineas.First())
-                        continue;
-                    if (linea.Length < 10)
-                        continue;
-                    string[] lItemsLinea = linea.Replace('\t', ';').Split(';');
-                    ImportItemAnalisisSuelo item = new ImportItemAnalisisSuelo {
-                        NLinea = nLinea,
-                        Temporada = lItemsLinea[0],
-                        Provincia = int.Parse(lItemsLinea[1]),
-                        Municipio = int.Parse(lItemsLinea[2]),
-                        Poligono = int.Parse(lItemsLinea[3]),
-                        IdParcelaIntList = lItemsLinea[4].Replace("-", ",").Split(',').Select(int.Parse).ToList(),
-                        ElementoGruesos = double.Parse(lItemsLinea[5]),
-                        MateriaOrganica = double.Parse(lItemsLinea[6]),
-                        Arcilla = double.Parse(lItemsLinea[7]),
-                        Arena = double.Parse(lItemsLinea[8]),
-                        Limo = double.Parse(lItemsLinea[9])
-                    };
-                    ErrorItem errLin = null;ImportarAnalisisSuelo(item);
-                    lErrores.AddRange(errLin);
-                } catch (Exception ex) {
-                    lErrores.Add(new ErrorItem { NLinea = nLinea, Descripcion = ex.Message });
-                }
-                nLinea++;
-            }
-            return lErrores;
-        }
-        */
-
-        /*
-                private static List<ErrorItem> ImportarAnalisisSuelo(ImportItemAnalisisSuelo item) {
-                    List<ErrorItem> ret = new List<ErrorItem>();
-                    Database db = DB.ConexionOptiaqua;
-                    db.BeginTransaction();
-                    try {
-                        foreach (int parcela in item.IdParcelaIntList) {
-                            string sql = @"";
-                            sql += $" SELECT dbo.UnidadCultivoParcela.IdUnidadCultivo ";
-                            sql += $" FROM dbo.Parcela INNER JOIN ";
-                            sql += $" dbo.UnidadCultivoParcela ON dbo.Parcela.IdParcelaInt = dbo.UnidadCultivoParcela.IdParcelaInt ";
-                            sql += $" WHERE";
-                            sql += $" (dbo.UnidadCultivoParcela.IdTemporada = '{item.Temporada}') AND ";
-                            sql += $" (dbo.Parcela.IdProvincia = {item.Provincia}) AND ";
-                            sql += $" (dbo.Parcela.IdMunicipio = {item.Municipio}) AND";
-                            sql += $" (dbo.Parcela.IdPoligono = {item.Poligono}) AND";
-                            sql += $" (dbo.Parcela.IdParcela = '{parcela}')";
-
-                            string idUC = db.SingleOrDefault<string>(sql);
-                            if (idUC == null) {
-                                ret.Add(new ErrorItem { NLinea = item.NLinea, Descripcion = "No se encuentra parcela: "+parcela.ToString()});
-                                continue;
-                            }
-                            var  ucs = new UnidadCultivoSuelo {
-                                IdUnidadCultivo = idUC,
-                                IdTemporada = item.Temporada,
-                                Arcilla = item.Arcilla,
-                                Arena = item.Arena,
-                                ElementosGruesos = item.ElementoGruesos,
-                                Limo = item.Limo,
-                                MateriaOrganica = item.MateriaOrganica,
-                                IdHorizonte = 1,
-                                ProfundidadHorizonte = 1
-                            };
-                            db.Save(ucs);
-                        }
-                        db.CompleteTransaction();
-                    } catch (Exception) {
-                        db.AbortTransaction();
-
-                    }
-                    return ret;
-                }
-        */
     }
 }

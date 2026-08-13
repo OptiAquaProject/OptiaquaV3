@@ -1,21 +1,16 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Net;
     using System.Net.Http;
     using webapi;
     using webapi.Utiles;
-    using static WebApi.DatosExtraController;
 
     /// <summary>
     /// Capa de acceso a datos de OptiAqua sobre SQL Server (librería NPoco).
@@ -25,21 +20,6 @@
     /// los miembros van en orden alfabético.
     /// </summary>
     public static partial class DB {
-
-        public static void ActulizaDatosGeoParcelas() {
-            var db = DB.ConexionOptiaqua;
-            var sql = "SELECT *  FROM [OptiAquaV2].[dbo].[Parcela]  where Longitud is null or latitud is null or geo is null";
-            var lPSin = db.Fetch<ParcelaPoco>(sql);
-            foreach (var p in lPSin) {
-                var pSigpac = SigPacGetRecInfo(p.IdProvincia.Value, p.IdMunicipio.Value, p.IdPoligono.Value, int.Parse(p.IdParcela), 1);
-                if (pSigpac == null)
-                    continue;
-                var sqlUpdate = $"update Parcela set geo = geometry::STGeomFromText('{pSigpac.wkt}',4258) where IdParcelaInt={p.IdParcelaInt}";
-                var kk = db.Execute(sqlUpdate);
-                sqlUpdate = $"update Parcela set latitud =geo.STCentroid().STY , longitud= geo.STCentroid().STX  where IdParcelaInt={p.IdParcelaInt}";
-                kk = db.Execute(sqlUpdate);
-            }
-        }
 
         private static void DatosParcelasList(string idUnidadCultivo, string idTemporada, out string poligonos, out string parcelas, out string refCatastrales) {
             Database db = DB.ConexionOptiaqua;
@@ -186,32 +166,6 @@
         }
 
         /// <summary>
-        /// ParcelasCultivo.
-        /// </summary>
-        /// <param name="IdParcela">IdParcela<see cref="int"/>.</param>
-        /// <param name="temporada">temporada<see cref="string"/>.</param>
-        /// <returns><see cref="UnidadCultivoCultivo"/>.</returns>
-        public static UnidadCultivoCultivo ParcelasCultivo(int IdParcela, string temporada) {
-            Database db = DB.ConexionOptiaqua;
-            string sql;
-            sql = "Select * from ParcelasCultivoEtapas where IdParcela =" + IdParcela + " AND IDTemporada='" + temporada + "' ";
-            return db.SingleOrDefault<UnidadCultivoCultivo>(sql);
-        }
-
-        /// <summary>
-        /// Retorna la lista de códigos de parcelas de una unidad de cultivo para la temporada indicada.
-        /// </summary>
-        /// <param name="IdUnidadCultivo">.</param>
-        /// <param name="idTemporada">.</param>
-        /// <returns>.</returns>
-        public static List<int> ParcelasDeUnidadCultivo(string IdUnidadCultivo, string idTemporada) {
-            Database db = DB.ConexionOptiaqua;
-            string sql = "Select IdParcelaInt From UnidadCultivoParcela Where IdUnidadCultivo=@0 and IdTemporada=@1";
-            List<int> ret = db.Fetch<int>(sql, IdUnidadCultivo, idTemporada);
-            return ret;
-        }
-
-        /// <summary>
         /// ParcelasList.
         /// </summary>
         /// <returns><see cref="object"/>.</returns>
@@ -246,45 +200,6 @@
             public string RefCatastral { get; set; }
             public string IdPoligono { get; set; }
             public string IdParcela { get; set; }
-        }
-
-        public static SigPacDBPoco SigPacGetRecInfo(int pro, int mun, int pol, int par, int rec) {
-            var url = $"https://sigpac.mapama.gob.es/fega/ServiciosVisorSigpac/query/recinfo/{pro}/{mun}/0/0/{pol}/{par}/{rec}.json/";
-            var request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "GET";
-            request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-            //request.ContentType = "application/json";
-            //request.Accept = "application/json";
-            try {
-
-                using (WebResponse response = request.GetResponse()) {
-                    using (Stream strReader = response.GetResponseStream()) {
-                        if (strReader == null) return null;
-                        using (StreamReader objReader = new StreamReader(strReader)) {
-                            string responseBody = objReader.ReadToEnd();
-                            // Do something with responseBody
-                            // Console.WriteLine(responseBody);
-                            var lret = Newtonsoft.Json.JsonConvert.DeserializeObject<SigPacDBPoco[]>(responseBody);
-                            if (lret.Length == 0)
-                                return null;
-                            var ret = lret[0];
-                            //var geo1 = ret.wkt.Replace("POLYGON", "").Replace("(", "").Replace(")", "");
-                            //var lPares = geo1.Split(',');
-                            //StringBuilder compose = new StringBuilder();
-                            //foreach(var p in lPares) {
-                            //    var geo2 = p.Split(' ');
-                            //    compose= compose.Append("["+geo2[0] +"," + geo2[1]+"],");
-                            //}
-                            //compose.Remove(compose.Length-1, 1);
-                            //ret.wkt= "[["+ compose.ToString() +"]]";    
-                            return ret;
-                        }
-                    }
-                }
-            } catch (WebException ex) {
-                return null;
-                // Handle error
-            }
         }
 
         internal static List<itemTemporadaUC> UnidadCultivosDePacela(int idParcelaInt) {

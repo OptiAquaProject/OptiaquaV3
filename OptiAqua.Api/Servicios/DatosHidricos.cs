@@ -141,7 +141,6 @@
         public List<UnidadCultivoCultivoEtapas> UnidadCultivoCultivoEtapasList { get; private set; }
 
         public ParametrosEtapasCalculos ParametrosEtapas { get; private set; }
-        //public ParametrosCultivoCalculos ParametrosCultivo { get; private set; }
 
         /// <summary>
         /// Retorna primera fecha de las etapas como fecha de siembra.
@@ -191,16 +190,6 @@
         /// </summary>
         public double CultivoIntegralEmergencia => cultivo.IntegralEmergencia;
 
-
-        /// <summary>
-        /// Gets the CultivoAlturaFinal.
-        /// </summary>
-        //public double? CultivoAlturaFinal => cultivo.AlturaFinal;
-
-        /// <summary>
-        /// Gets the CultivoAlturaInicial.
-        /// </summary>
-        //public double? CultivoAlturaInicial => cultivo.AlturaInicial;
 
         /// <summary>
         /// Gets the CultivoProfRaizInicial.
@@ -320,11 +309,9 @@
                 throw new Exception($"Imposible cargar datos climáticos para la estación {idEstacion}  en el intervalo de fechas de {FechaSiembra()} a {FechaFinalDeEstudio()}");
 
             cultivo = DB.Cultivo(unidadCultivoCultivo.IdCultivo);
-            //ParametrosCultivo = Newtonsoft.Json.JsonConvert.DeserializeObject<ParametrosCultivoCalculos>(cultivo.ParametrosJson);
 
             regante = (Regante)DB.Regante(unidadCultivoCultivo.IdRegante);
 
-            //lUCSuelo = DB.UnidadCultivoSueloListNew(idUnidadCultivo, idTemporada);
             lUCSuelo = DB.SueloUnidadCultivoTemporada(IdUnidadCultivo, IdTemporada);
 
             if (lUCSuelo == null || lUCSuelo.Count == 0)
@@ -344,8 +331,6 @@
             // Con '>=' y etapaBase0==Count se accedía a ParametrosEtapas[Count] -> excepción.
             if (ParametrosEtapas.Count > etapaBase0 && ParametrosEtapas[etapaBase0].TryGetValue(parametro, out var valor))
                 return valor;
-            //if (ParametrosCultivo.TryGetValue(parametro, out valor))
-            //    return valor;
             return null;
         }
 
@@ -515,17 +500,7 @@
             return TipoEstresUmbral(UnidadCultivoCultivoEtapasList[nEtapaBase0].IdTipoEstres, indiceEstres);
         }
 
-        /// <summary>
-        /// The CultivoEtapasList_Ndias1y2.
-        /// </summary>
-        /// <returns>The <see cref="int"/>.</returns>
-        public int CultivoEtapasListNdias1y2_sin_uso() {
-            if (UnidadCultivoCultivoEtapasList == null)
-                return 0;
-            int ret = UnidadCultivoCultivoEtapasList.Count > 1 ? UnidadCultivoCultivoEtapasList[0].DuracionDiasEtapa : 0;
-            ret += UnidadCultivoCultivoEtapasList.Count > 2 ? UnidadCultivoCultivoEtapasList[1].DuracionDiasEtapa : 0;
-            return ret;
-        }
+
 
         /// <summary>
         /// Umbral (UmbralMaximo) del tipo de estrés de la etapa, localizado por su IdUmbral.

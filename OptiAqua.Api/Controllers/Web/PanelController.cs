@@ -100,6 +100,9 @@ namespace WebApi {
         public IActionResult ParcelaGuardar(int idParcelaInt, string descripcion, int? idRegante, double superficieM2) {
             try {
                 DB.ParcelaGuardarDatos(idParcelaInt, descripcion, idRegante, superficieM2);
+                // La superficie entra en el balance hídrico: hay que tirar lo memorizado
+                // de las unidades de cultivo que usan esta parcela.
+                CacheDatosHidricos.SetDirtyParcela(idParcelaInt);
                 TempData["ok"] = "Parcela " + idParcelaInt + " guardada.";
                 return RedirectToAction("Parcelas");
             } catch (Exception ex) { Log.Error("Panel/ParcelaGuardar", ex); TempData["error"] = ex.Message; return RedirectToAction("ParcelaEditor", new { id = idParcelaInt }); }

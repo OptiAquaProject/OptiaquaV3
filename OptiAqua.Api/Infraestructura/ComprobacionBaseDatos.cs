@@ -1,6 +1,5 @@
 using DatosOptiaqua;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 

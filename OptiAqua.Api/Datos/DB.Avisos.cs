@@ -1,11 +1,8 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
-    using System.Collections.Generic;
     using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
@@ -15,7 +12,6 @@
     using System.Net.Http;
     using webapi;
     using webapi.Utiles;
-    using static WebApi.DatosExtraController;
 
     /// <summary>
     /// Capa de acceso a datos de OptiAqua sobre SQL Server (librería NPoco).
@@ -24,31 +20,6 @@
     /// los miembros van en orden alfabético.
     /// </summary>
     public static partial class DB {
-
-        /// <summary>
-        /// Retorna lista de avisos con los filtros indicados según los parámetros. 
-        /// Pasar parámetro con valor '' si no se desea filtrar por campo.
-        /// </summary>
-        /// <param name="idAviso">idAviso<see cref="string"/>.</param>
-        /// <param name="idAvisoTipo">idAvisoTipo<see cref="int?"/>.</param>
-        /// <param name="fInicio">fInicio<see cref="DateTime?"/>.</param>
-        /// <param name="fFin">fFin<see cref="DateTime?"/>.</param>
-        /// <param name="de">de<see cref="string"/>.</param>
-        /// <param name="para">para<see cref="string"/>.</param>
-        /// <param name="search">search<see cref="string"/>.</param>
-        /// <returns><see cref="object"/>.</returns>
-        public static object AvisosList(string idAviso, int? idAvisoTipo, DateTime? fInicio, DateTime? fFin, string de, string para, string search) {
-            Database db = DB.ConexionOptiaqua;
-            idAviso = idAviso.Quoted();
-            string strFInicio = fInicio?.ToString().Quoted() ?? "''";
-            string strFFin = fFin?.ToString().Quoted() ?? "''";
-            string strIdAvisoTipo = idAvisoTipo?.ToString() ?? "''";
-            de = de.Quoted();
-            para = para.Quoted();
-            search = search.Quoted();
-            string sql = $"SELECT * FROM AvisosList({idAviso},{strIdAvisoTipo},{strFInicio},{strFFin},{de},{para},{search})";
-            return db.Fetch<object>(sql);
-        }
 
         /// <summary>
         /// The MultimediaDelete.

@@ -1,19 +1,14 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Net;
     using System.Net.Http;
-    using webapi;
     using webapi.Utiles;
     using static WebApi.DatosExtraController;
 
@@ -187,20 +182,6 @@
 
         public static string HidrantesListJson(string IdUnidadCultivo, string idTemporada) {
             return "[]";
-        }
-
-        /// <summary>
-        /// Lee la tabla de trabajo tempHidrantes y recorre los hidrantes distintos.
-        /// Sin efecto: el cuerpo del bucle está vacío, la importación quedó a medias.
-        /// </summary>
-        internal static void ImportarHidrantes() {
-            Database db = ConexionOptiaqua;
-            List<Dictionary<string, string>> ldat = db.Fetch<Dictionary<string, string>>("select * from tempHidrantes");
-            List<string> lUcsRepetidas = ldat.Select(x => x["Hid"]).ToList();
-            List<string> lUcs = lUcsRepetidas.Distinct().ToList();
-            foreach (string idUc in lUcs) {
-
-            }
         }
 
         public static void RefreshDBRiegos() {

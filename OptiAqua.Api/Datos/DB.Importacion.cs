@@ -1,9 +1,6 @@
 ﻿namespace DatosOptiaqua {
-    using Models;
     using NPoco;
-    using System;
     using System.Collections.Generic;
-    using System.Linq;
 
     public static partial class DB {
 

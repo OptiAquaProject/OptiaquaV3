@@ -1,5 +1,4 @@
-﻿using System;
-using NPoco;
+﻿using NPoco;
 namespace WebApi {
 
     public class ImportItemUCExcel {

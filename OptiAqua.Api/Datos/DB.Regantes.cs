@@ -1,12 +1,9 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
     using System.IO;
@@ -15,7 +12,6 @@
     using System.Net.Http;
     using webapi;
     using webapi.Utiles;
-    using static WebApi.DatosExtraController;
 
     /// <summary>
     /// Capa de acceso a datos de OptiAqua sobre SQL Server (librería NPoco).
@@ -68,22 +64,6 @@
             cpass = cpass.Substring(1, 12); // 12 como máximo            
             string ret = Encriptacion.Encripta(cpass);
             return ret;
-        }
-
-        /// <summary>
-        /// Crea y almacena contraseña por defecto para regante.
-        /// </summary>
-        public static void CrearPassw() {
-            Database db = DB.ConexionOptiaqua;
-            List<Regante> lr = db.Fetch<Regante>("select * from regante");
-            foreach (Regante r in lr) {
-                if (r.Role != "admin") {
-                    string pass1 = BuildPassword(r.NIF, "Pass" + r.IdRegante.ToString());
-                    r.Contraseña = pass1;
-                    r.Role = "dbo";
-                    db.Save(r);
-                }
-            }
         }
 
         /// <summary>
@@ -142,56 +122,6 @@
             if (role == "dbo")
                 return DB.LaParcelaPerteneceAlRegante(idUsuario, idParcela);
             return false;
-        }
-
-        /// <summary>
-        /// IdReganteDeUnidadCultivo.
-        /// </summary>
-        /// <param name="idUnidadCultivo">idUnidadCultivo<see cref="string"/>.</param>
-        /// <returns><see cref="int?"/>.</returns>
-        public static int? IdReganteDeUnidadCultivo(string idUnidadCultivo) {
-            int? ret = null;
-            if (string.IsNullOrEmpty(idUnidadCultivo))
-                return null;
-            try {
-                Database db = DB.ConexionOptiaqua;
-                string sql;
-                sql = "Select Distinct IdRegante from UnidadCultivo where IdUnidadCultivo=@0 ";
-                List<int?> lRet = db.Fetch<int?>(sql, idUnidadCultivo);
-                if (lRet != null && lRet.Count > 0)
-                    ret = lRet[0];
-                return ret;
-            } catch (Exception) {
-
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// IdReganteDeUnidadCultivoTemporada.
-        /// </summary>
-        /// <param name="idUnidadCultivo">idUnidadCultivo<see cref="string"/>.</param>
-        /// <param name="idTemporada">idTemporada<see cref="string"/>.</param>
-        /// <returns><see cref="int?"/>.</returns>
-        public static int? IdReganteDeUnidadCultivoTemporada(string idUnidadCultivo, string idTemporada) {
-            int? ret = null;
-            if (string.IsNullOrEmpty(idUnidadCultivo))
-                return null;
-            if (string.IsNullOrEmpty(idTemporada))
-                return null;
-
-            try {
-                Database db = DB.ConexionOptiaqua;
-                string sql;
-                sql = "Select Distinct IdRegante from UnidadCultivoParcela where IdUnidadCultivo=@0 and idTemporada=@1 ";
-                List<int?> lRet = db.Fetch<int?>(sql, idUnidadCultivo, idTemporada);
-                if (lRet != null && lRet.Count > 0)
-                    ret = lRet[0];
-                return ret;
-            } catch (Exception) {
-
-                return null;
-            }
         }
 
         /// <summary>
@@ -315,12 +245,6 @@
                 return null;
             Database db = DB.ConexionOptiaqua;
             return db.SingleById<Regante>(idRegante);
-        }
-
-        internal static bool ReganteExists(int idRegante) {
-            using (var db = DB.ConexionOptiaqua) {
-                return db.Exists<Regante>(idRegante);
-            }
         }
 
         /// <summary>

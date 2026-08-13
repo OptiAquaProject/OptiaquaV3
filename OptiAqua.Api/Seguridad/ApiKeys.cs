@@ -1,5 +1,4 @@
 using NPoco;
-using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
@@ -161,11 +160,5 @@ namespace DatosOptiaqua {
             }
         }
 
-        /// <summary>Número de claves activas. Para el cuadro de mando.</summary>
-        public static int ActivasCount() {
-            using (var db = Conexion.Nueva()) {
-                return db.SingleOrDefault<int?>("SELECT COUNT(*) FROM ApiKey WHERE Activa=1") ?? 0;
-            }
-        }
     }
 }

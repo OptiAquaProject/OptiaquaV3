@@ -1,6 +1,5 @@
 using Microsoft.Data.SqlClient;
 using NPoco;
-using System;
 
 namespace DatosOptiaqua {
     /// <summary>

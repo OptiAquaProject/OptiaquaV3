@@ -2,7 +2,6 @@
     using DatosOptiaqua;
     using System;
     using Microsoft.AspNetCore.Mvc;
-    using webapi.Utiles;
     using Microsoft.AspNetCore.Authorization;
 
     /// <summary>

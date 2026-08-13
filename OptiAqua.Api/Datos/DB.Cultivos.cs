@@ -1,17 +1,13 @@
 ﻿namespace DatosOptiaqua {
     using Models;
-    using Newtonsoft.Json;
     using NPoco;
-    using Org.BouncyCastle.Crypto;
     using Org.BouncyCastle.Crypto.Signers;
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Data.SqlTypes;
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Net;
     using System.Net.Http;
     using webapi;
     using webapi.Utiles;
@@ -25,26 +21,6 @@
     /// los miembros van en orden alfabético.
     /// </summary>
     public static partial class DB {
-
-        public class cParam {
-            public double? TBase { get; set; }
-            public double ProfRaizInicial { get; set; }
-            public double ProfRaizMax { get; set; }
-            public double ModCobCoefA { get; set; }
-            public double ModCobCoefB { get; set; }
-            public double? ModCobCoefC { get; set; }
-            public double ModAltCoefA { get; set; }
-            public double ModAltCoefB { get; set; }
-            public double? ModAltCoefC { get; set; }
-            public double ModRaizCoefA { get; set; }
-            public double ModRaizCoefB { get; set; }
-            public double? ModRaizCoefC { get; set; }
-            public double? AlturaInicial { get; set; }
-            public double? AlturaFinal { get; set; }
-            public double IntegralEmergencia { get; set; }
-            public double CoberturaInicial { get; set; }
-            public double CoberturaFinal { get; set; }
-        }
 
         /// <summary>
         /// Carga los datos del cultivo referenciado.
@@ -60,25 +36,6 @@
                 throw new Exception($"No se encuenta cultivo:{idCultivo}");
             }
             return ret;
-        }
-
-        /// <summary>
-        /// CultivoEtapasList.
-        /// </summary>
-        /// <param name="idCultivo">idCultivo<see cref="int?"/>.</param>
-        /// <returns><see cref="List{CultivoEtapas}"/>.</returns>
-        public static List<CultivoEtapas> CultivoEtapasList(int? idCultivo) {
-            if (idCultivo == null)
-                return null;
-            Database db = DB.ConexionOptiaqua;
-            List<CultivoEtapas> listaCF = db.Fetch<CultivoEtapas>("Select * from CultivoEtapas Where IdCultivo=@0", idCultivo);
-            return listaCF;
-        }
-
-        internal static bool CultivoExists(int idCultivo) {
-            using (var db = DB.ConexionOptiaqua) {
-                return db.Exists<Cultivo>(idCultivo);
-            }
         }
 
         /// <summary>
@@ -199,110 +156,6 @@
             return ret.ToDictionary(x => x.IdTipoEstres);
         }
 
-        internal static void PropagarEtapas() {
-            Database db = DB.ConexionOptiaqua;
-            List<UnidadCultivoCultivoEtapas> lCultivoCultivoEtapas = db.Fetch<UnidadCultivoCultivoEtapas>();
-            int i = 0;
-            foreach (UnidadCultivoCultivoEtapas unidadCultivoCultivoEtapa in lCultivoCultivoEtapas) {
-                i++;
-                UnidadCultivoCultivo uniCul = new UnidadCultivoCultivo {
-                    IdUnidadCultivo = unidadCultivoCultivoEtapa.IdUnidadCultivo,
-                    IdTemporada = unidadCultivoCultivoEtapa.IdTemporada
-                };
-                uniCul = db.SingleById<UnidadCultivoCultivo>(uniCul);
-
-                CultivoEtapas etapa = new CultivoEtapas {
-                    IdCultivo = uniCul.IdCultivo,
-                    OrdenEtapa = unidadCultivoCultivoEtapa.IdEtapaCultivo
-                };
-                etapa = db.SingleOrDefaultById<CultivoEtapas>(etapa);
-                if (unidadCultivoCultivoEtapa.ParametrosJson != etapa.ParametrosJson) {
-                    unidadCultivoCultivoEtapa.ParametrosJson = etapa.ParametrosJson;
-                    db.Save(unidadCultivoCultivoEtapa);
-                }
-            }
-        }
-
-        internal static void PropagarEtapas2() {
-            Database db = DB.ConexionOptiaqua;
-            List<UnidadCultivoCultivoEtapas> lEtapas = db.Fetch<UnidadCultivoCultivoEtapas>();
-            int i = 0;
-            foreach (UnidadCultivoCultivoEtapas unidadCultivoCultivoEtapa in lEtapas) {
-                i++;
-
-                UnidadCultivoCultivo uniCul = new UnidadCultivoCultivo {
-                    IdUnidadCultivo = unidadCultivoCultivoEtapa.IdUnidadCultivo,
-                    IdTemporada = unidadCultivoCultivoEtapa.IdTemporada
-                };
-                uniCul = db.SingleById<UnidadCultivoCultivo>(uniCul);
-
-                CultivoEtapas etapa = new CultivoEtapas {
-                    IdCultivo = uniCul.IdCultivo,
-                    OrdenEtapa = unidadCultivoCultivoEtapa.IdEtapaCultivo
-                };
-                etapa = db.SingleOrDefaultById<CultivoEtapas>(etapa);
-                unidadCultivoCultivoEtapa.AlturaInicial = etapa.AlturaInicial;
-                unidadCultivoCultivoEtapa.AlturaFinal = etapa.AlturaFinal;
-                unidadCultivoCultivoEtapa.IdTipoCalculoAltura = etapa.IdTipoCalculoAltura;
-                unidadCultivoCultivoEtapa.IdTipoCalculoCobertura = etapa.IdTipoCalculoCobertura;
-                unidadCultivoCultivoEtapa.IdTipoCalculoLongitudRaiz = etapa.IdTipoCalculoLongitudRaiz;
-                //unidadCultivoCultivoEtapa.ParametrosJson = etapa.ParametrosJson;
-                db.Save(unidadCultivoCultivoEtapa);
-
-            }
-        }
-
-        /*
-        internal static void PropagarJsonCultivo() {
-            Database db = DB.ConexionOptiaqua;
-            List<Cultivo> lCultivos = db.Fetch<Cultivo>();
-            foreach (Cultivo c in lCultivos) {
-                Dictionary<string, double> dParam = new Dictionary<string, double> {
-                    { "ModCobCoefA", c.ModCobCoefA },
-                    { "ModCobCoefB", c.ModCobCoefB }
-                };
-                if (c.ModCobCoefC != null)
-                    dParam.Add("ModCobCoefC", c.ModCobCoefC ?? 0);
-                dParam.Add("ModAltCoefA", c.ModAltCoefA);
-                dParam.Add("ModAltCoefB", c.ModAltCoefB);
-                if (c.ModAltCoefC != null)
-                    dParam.Add("ModAltCoefC", c.ModAltCoefC ?? 0);
-                dParam.Add("ModRaizCoefA", c.ModRaizCoefA);
-                dParam.Add("ModRaizCoefB", c.ModRaizCoefB);
-                if (c.ModRaizCoefC != null)
-                    dParam.Add("ModRaizCoefC", c.ModRaizCoefC ??0);
-                
-                string json = Newtonsoft.Json.JsonConvert.SerializeObject(dParam, Formatting.Indented, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
-                c.ParametrosJson = json;
-                db.Save(c);
-            }
-        }
-        */
-
-        internal static void QuitarParametrosJson() {
-            Database db = DB.ConexionOptiaqua;
-            var lEtepas = db.Fetch<UnidadCultivoCultivoEtapas>();
-            foreach (var e in lEtepas) {
-                Dictionary<string, double> dParam = JsonConvert.DeserializeObject<Dictionary<string, double>>(e.ParametrosJson);
-                if (dParam.Keys.Contains("TBase"))
-                    dParam.Remove("TBase");
-
-                if (dParam.Keys.Contains("ProfRaizInicial"))
-                    dParam.Remove("ProfRaizInicial");
-
-                if (dParam.Keys.Contains("ProfRaizMax"))
-                    dParam.Remove("ProfRaizMax");
-
-                if (dParam.Keys.Contains("IntegralEmergencia"))
-                    dParam.Remove("IntegralEmergencia");
-
-                string json = Newtonsoft.Json.JsonConvert.SerializeObject(dParam, Formatting.Indented, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
-                e.ParametrosJson = json;
-                db.Save(e);
-            }
-
-        }
-
         /// <summary>
         /// Devuele el registro TipoEstres inficado por su identificador.
         /// </summary>
@@ -311,18 +164,6 @@
         internal static TipoEstres TipoEstres(string idTipoEstres) {
             Database db = DB.ConexionOptiaqua;
             TipoEstres ret = db.SingleById<TipoEstres>(idTipoEstres);
-            return ret;
-        }
-
-        /// <summary>
-        /// TipoEstresUmbralList.
-        /// </summary>
-        /// <param name="idTipoEstres">idTipoEstres<see cref="string"/>.</param>
-        /// <returns><see cref="List{TipoEstresUmbral}"/>.</returns>
-        internal static List<TipoEstresUmbral> TipoEstresUmbralOrderList(string idTipoEstres) {
-            Database db = DB.ConexionOptiaqua;
-            string sql = $"SELECT * FROM TipoEstresUmbral Where IdTipoEstres='{idTipoEstres}' order by umbralMaximo";
-            List<TipoEstresUmbral> ret = db.Fetch<TipoEstresUmbral>(sql);
             return ret;
         }
 

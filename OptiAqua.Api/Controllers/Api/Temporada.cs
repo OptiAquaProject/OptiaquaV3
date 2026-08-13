@@ -2,11 +2,9 @@
     using DatosOptiaqua;
     using Models;
     using System;
-    using System.Linq;
     using System.Security.Claims;
     
     using Microsoft.AspNetCore.Mvc;
-    using webapi.Utiles;
     using Microsoft.AspNetCore.Authorization;
 
     /// <summary>

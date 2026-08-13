@@ -1,9 +1,6 @@
 using DatosOptiaqua;
-using Microsoft.Extensions.Logging;
 using Quartz;
-using System;
 using System.Diagnostics;
-using System.Threading.Tasks;
 
 namespace OptiAqua.Api.Infraestructura {
     /// <summary>

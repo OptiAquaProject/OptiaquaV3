@@ -1,5 +1,4 @@
-﻿using NPoco;
-using Org.BouncyCastle.Crypto;
+﻿using Org.BouncyCastle.Crypto;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -10,19 +9,9 @@ using System.Security.Policy;
 /// </summary>
 namespace Siar.Models {
 
-    public class RootApiSiar_V1 {
-        public List<DatoClimaticoApiSiar_V1> data { get; set; }
-    }
 
-    public class DatoClimaticoApiSiar_V1 {
-        public DateTime Fecha { get; set; }
-        public string Estacion { get; set; }
-        public string TAirMd { get; set; }
-        public string HRMn { get; set; }
-        public string PAcum { get; set; }
-        public string ET0 { get; set; }
-        public string VWindMd { get; set; }
-    }
+
+
 
 
     public class RootApiSiar_V2 {
