@@ -59,7 +59,10 @@ try {
     // -----------------------------------------------------------------------------------
     // Servicios
     // -----------------------------------------------------------------------------------
-    builder.Services.AddControllersWithViews()
+    builder.Services.AddControllersWithViews(opciones => {
+            // Acciones heredadas de Web API 2 sin verbo explícito -> GET por defecto (ver la convención).
+            opciones.Conventions.Add(new VerboGetPorDefectoConvention());
+        })
         .AddNewtonsoftJson(opciones => {
             // Se mantiene Newtonsoft y estos dos ajustes porque definen el JSON que reciben
             // los clientes actuales ($id/$ref). Cambiar a System.Text.Json alteraría el
@@ -69,7 +72,11 @@ try {
         });
 
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+    builder.Services.AddSwaggerGen(c => {
+        // Varias acciones definen clases de parámetros anidadas con el mismo nombre corto
+        // (PostDatosExtraParam, etc.). Usar el nombre completo evita colisiones de schemaId.
+        c.CustomSchemaIds(t => (t.FullName ?? t.Name).Replace("+", "."));
+    });
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddMemoryCache();
 
