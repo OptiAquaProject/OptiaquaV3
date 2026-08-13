@@ -420,16 +420,40 @@
         }
 
         /// <summary>
-        /// Valor de una variable climática a una fecha. Si ese día no hay registro, se estima
-        /// con el promedio de los tres días anteriores QUE TENGAN dato. 0 si no hay ninguno.
+        /// Días en los que ha habido que recurrir a las medias del mes por no tener ni el dato
+        /// del día ni ninguno de los tres anteriores. Lo publica <see cref="DiasSinClima"/>
+        /// para que el estado hídrico pueda advertirlo en vez de callárselo.
+        /// </summary>
+        private readonly HashSet<DateTime> diasSinClima = new HashSet<DateTime>();
+
+        /// <summary>Días del balance estimados con las medias del mes, si los hay.</summary>
+        public IReadOnlyCollection<DateTime> DiasSinClima => diasSinClima;
+
+        /// <summary>
+        /// Valor de una variable climática a una fecha, con dos respaldos encadenados:
+        /// el promedio de los tres días anteriores QUE TENGAN dato y, si tampoco hay ninguno,
+        /// la media del mes de <see cref="ClimaPorDefecto"/>.
         ///
         /// Antes cada variable duplicaba este bloque y, salvo la temperatura, todas caían por
         /// error en TempMedia: cuando faltaba ETo, viento o humedad, se rellenaban con la
         /// temperatura (mm/día, m/s o % sustituidos por °C). Con un único helper parametrizado
         /// por el selector del campo, el respaldo usa siempre la MISMA magnitud y el fallo no
         /// puede reaparecer al tocar una de ellas.
+        ///
+        /// El segundo respaldo se añadió porque devolver 0 dejaba el balance corriendo a
+        /// ciegas —ETo 0 es "el cultivo no gasta agua", no "no sé cuánto gasta"— y el
+        /// resultado era una ficha impecable y falsa. Ver <see cref="ClimaPorDefecto"/>.
         /// </summary>
-        internal static double ValorClimaticoConRespaldo(List<DatoClimatico> datos, DateTime fecha, Func<DatoClimatico, double> selector) {
+        /// <param name="datos">Serie climática cargada para la unidad de cultivo.</param>
+        /// <param name="fecha">Día que se busca.</param>
+        /// <param name="selector">Campo de la serie: ETo, temperatura, viento o humedad.</param>
+        /// <param name="porDefectoDelMes">Media del mes para ese mismo campo.</param>
+        /// <param name="estimadoDelMes">true si se ha tenido que recurrir a la media del mes.</param>
+        internal static double ValorClimaticoConRespaldo(List<DatoClimatico> datos, DateTime fecha,
+                                                        Func<DatoClimatico, double> selector,
+                                                        Func<int, double> porDefectoDelMes,
+                                                        out bool estimadoDelMes) {
+            estimadoDelMes = false;
             DatoClimatico hoy = datos?.Find(d => d.Fecha == fecha);
             if (hoy != null)
                 return selector(hoy);
@@ -443,28 +467,42 @@
                     n++;
                 }
             }
-            return n == 0 ? 0 : suma / n;
+            if (n > 0)
+                return suma / n;
+            estimadoDelMes = true;
+            return porDefectoDelMes(fecha.Month);
+        }
+
+        /// <summary>
+        /// Envoltorio de instancia: aplica el respaldo y toma nota del día si ha hecho falta
+        /// la media del mes.
+        /// </summary>
+        private double ValorClimatico(DateTime fecha, Func<DatoClimatico, double> selector, Func<int, double> porDefectoDelMes) {
+            double valor = ValorClimaticoConRespaldo(lDatosClimaticos, fecha, selector, porDefectoDelMes, out bool estimado);
+            if (estimado)
+                diasSinClima.Add(fecha.Date);
+            return valor;
         }
 
         /// <summary>
         /// Retorna velocidad del viento a una Fecha.  0 Si no se dispone de datos en esa fecha.
         /// </summary>
         public double VelocidadViento(DateTime fecha) {
-            return ValorClimaticoConRespaldo(lDatosClimaticos, fecha, d => d.VelViento);
+            return ValorClimatico(fecha, d => d.VelViento, ClimaPorDefecto.Viento);
         }
 
         /// <summary>
         /// Retorna Humedad media a una fecha. 0 Si no se dispone de datos en esa fecha.
         /// </summary>
         public double HumedadMedia(DateTime fecha) {
-            return ValorClimaticoConRespaldo(lDatosClimaticos, fecha, d => d.HumedadMedia);
+            return ValorClimatico(fecha, d => d.HumedadMedia, ClimaPorDefecto.Humedad);
         }
 
         /// <summary>
         /// Retorna la temperatura a una fecha.  0 Si no se dispone de datos en esa fecha.
         /// </summary>
         public double Temperatura(DateTime fecha) {
-            return ValorClimaticoConRespaldo(lDatosClimaticos, fecha, d => d.TempMedia);
+            return ValorClimatico(fecha, d => d.TempMedia, ClimaPorDefecto.Temperatura);
         }
 
         /// <summary>
@@ -486,7 +524,7 @@
         /// <param name="fecha">.</param>
         /// <returns>.</returns>
         public double Eto(DateTime fecha) {
-            return ValorClimaticoConRespaldo(lDatosClimaticos, fecha, d => d.Eto);
+            return ValorClimatico(fecha, d => d.Eto, ClimaPorDefecto.Eto);
         }
 
         /// <summary>

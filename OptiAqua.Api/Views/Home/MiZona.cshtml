@@ -19,7 +19,8 @@
         <tbody>
         @foreach (var d in Model) {
             var err = d.Status != null && d.Status.StartsWith("ERROR");
-            <tr class="@(err ? "table-danger" : "")">
+            var aviso = d.Status != null && d.Status.StartsWith("AVISO");
+            <tr class="@(err ? "table-danger" : aviso ? "table-warning" : "")">
                 <td><b>@d.IdUnidadCultivo</b></td>
                 @if (esGestor) { <td>@d.Regante</td> }
                 <td>@d.Cultivo</td>
@@ -32,6 +33,7 @@
                     } else {
                         <span class="badge" style="background:@(string.IsNullOrEmpty(d.ColorEstres) ? "#6c757d" : d.ColorEstres)">@d.IndiceEstres.ToString("N2")</span>
                         <small class="text-muted ms-1">@d.DescripcionEstres</small>
+                        @if (aviso) { <span class="badge bg-warning text-dark ms-1" title="@d.Status">estimado</span> }
                     }
                 </td>
                 <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="/api/DatosHidricos/@d.IdUnidadCultivo/@(d.Fecha.ToString("yyyy-MM-dd"))" target="_blank">Detalle</a></td>

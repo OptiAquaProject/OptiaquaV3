@@ -240,21 +240,42 @@
         /// <param name="fecha">The fecha<see cref="DateTime"/>.</param>
         /// <returns>The <see cref="int"/>.</returns>
         public int? RegarEnNDias(DateTime fecha) {
-            double etc = ETcMedia3Dias(fecha);
             double aguaUtil = AguaUtil(fecha);
             if (aguaUtil < 0) // hay deficit de agua
                 return 0;
+
+            // El suelo agotado se resuelve ANTES de dividir. Con Ks = 0 el cultivo ya no puede
+            // extraer, así que su consumo se desploma y la división da un número enorme
+            // —"tardará 11.119 días en secarse"—, justo al revés de lo que toca: hay que regar
+            // YA. Mismo 0 que el déficit de arriba. Y hay que mirarlo aquí y no dentro del
+            // "etc == 0", porque el consumo medio de tres días casi nunca cae a cero exacto:
+            // basta con que sea diminuto para que el cociente se dispare.
+            LineaBalance lin = LineasBalance.Find(x => x.Fecha == fecha) ?? LineasBalance.LastOrDefault();
+            if (lin != null && lin.CoeficienteEstresHidrico == 0)
+                return 0;
+
+            double etc = ETcMedia3Dias(fecha);
             if (etc == 0)
-                // Con un consumo medio de 0 la pregunta no tiene respuesta: el cultivo no está
-                // gastando agua, así que no hay un plazo hasta el próximo riego. Antes esto
-                // lanzaba una excepción que se llevaba por delante el estado hídrico ENTERO de
-                // la unidad de cultivo; medido sobre la base real, dejaba sin ficha a 150 de
-                // las 1.264. El campo es int? en el modelo, así que null ya viaja bien hasta
-                // la app y las vistas.
+                // Consumo exactamente nulo sin estar el suelo agotado: solo puede pasar si
+                // falta el clima, y entonces aguaUtil también sale 0. Es 0/0, indeterminado de
+                // verdad, y null es la respuesta honesta. Con el respaldo por medias del mes de
+                // ClimaPorDefecto esto ya no debería darse. Antes lanzaba una excepción que se
+                // llevaba por delante el estado hídrico ENTERO: 150 de 1.264 unidades de
+                // cultivo se quedaban sin ficha.
                 return null;
+
             double ret = Math.Round(aguaUtil / etc, 0);
-            return (int)ret;
+            return ret > MaximoDiasHastaRiego ? MaximoDiasHastaRiego : (int)ret;
         }
+
+        /// <summary>
+        /// Tope de días que se muestran en "regar en N días". Por encima, la cifra no dice
+        /// nada útil —el cultivo consume tan poco que el plazo se va a meses— y además invita
+        /// a leerla como una previsión, que no lo es: sale de extrapolar el consumo de los
+        /// tres últimos días. Es un tope de PRESENTACIÓN, no agronómico: si el criterio debe
+        /// ser otro, se cambia aquí.
+        /// </summary>
+        public const int MaximoDiasHastaRiego = 99;
 
         /// <summary>
         /// Devuelve un valor entre -1 y 1 indicando es estado hidrico a una fecha.
@@ -414,7 +435,15 @@
                 ColorEstres = linBalAFecha.ColorEstres,
                 MensajeEstres = linBalAFecha.MensajeEstres,
                 NumCambiosDeEtapaPendientesDeConfirmar = NumCambiosDeEtapaPendientesDeConfirmar(fecha),
-                Status = "OK",
+                // Un balance con días estimados por medias del mes no puede presentarse igual
+                // que uno con datos reales: la ficha sale igual de convincente y no lo es.
+                // "AVISO" y no "ERROR" a propósito, que las cifras siguen valiendo como
+                // orientación; las vistas distinguen los dos por el prefijo.
+                Status = unidadCultivoDatosHidricos.DiasSinClima.Count == 0
+                    ? "OK"
+                    : "AVISO: " + unidadCultivoDatosHidricos.DiasSinClima.Count + " día(s) del balance sin datos de la estación,"
+                      + " estimados con las medias del mes (el más reciente, "
+                      + unidadCultivoDatosHidricos.DiasSinClima.Max().ToString("dd/MM/yyyy") + ")",
             };
             return ret;
         }
