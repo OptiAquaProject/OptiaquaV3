@@ -239,13 +239,19 @@
         /// </summary>
         /// <param name="fecha">The fecha<see cref="DateTime"/>.</param>
         /// <returns>The <see cref="int"/>.</returns>
-        public int RegarEnNDias(DateTime fecha) {
+        public int? RegarEnNDias(DateTime fecha) {
             double etc = ETcMedia3Dias(fecha);
             double aguaUtil = AguaUtil(fecha);
             if (aguaUtil < 0) // hay deficit de agua
                 return 0;
             if (etc == 0)
-                throw new Exception("No se puede calcular RegarEnNDias con valores etc=0");
+                // Con un consumo medio de 0 la pregunta no tiene respuesta: el cultivo no está
+                // gastando agua, así que no hay un plazo hasta el próximo riego. Antes esto
+                // lanzaba una excepción que se llevaba por delante el estado hídrico ENTERO de
+                // la unidad de cultivo; medido sobre la base real, dejaba sin ficha a 150 de
+                // las 1.264. El campo es int? en el modelo, así que null ya viaja bien hasta
+                // la app y las vistas.
+                return null;
             double ret = Math.Round(aguaUtil / etc, 0);
             return (int)ret;
         }

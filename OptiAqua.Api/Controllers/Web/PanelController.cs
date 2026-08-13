@@ -120,14 +120,7 @@ namespace WebApi {
                 using (var db = Conexion.Nueva())
                     lUC = db.Fetch<string>("SELECT DISTINCT IdUnidadCultivo FROM UnidadCultivoCultivo WHERE IdTemporada=@0", idTemporada);
                 ViewBag.NTotal = lUC.Count;
-                foreach (var idUC in lUC.Take(100)) {
-                    try {
-                        var bh = BalanceHidrico.Balance(idUC, fecha);
-                        if (bh != null) lista.Add(bh.DatosEstadoHidrico(fecha));
-                    } catch (Exception ex) {
-                        lista.Add(new DatosEstadoHidrico { IdUnidadCultivo = idUC, IdTemporada = idTemporada, Status = "ERROR: " + ex.Message });
-                    }
-                }
+                lista = EstadoHidricoMaterializado.ObtenerLista(idTemporada, lUC.Take(100), fecha);
             } catch (Exception ex) { Log.Error("Panel/UnidadesCultivo", ex); TempData["error"] = ex.Message; }
             ViewBag.IdTemporada = idTemporada;
             return View(lista);
@@ -146,6 +139,16 @@ namespace WebApi {
             string texto = LeeScript("2026-08-12-apikey.sql");
             if (texto == null) { TempData["error"] = "No se encontró el script sql/2026-08-12-apikey.sql"; return RedirectToAction("Index", "Home"); }
             TempData["ok"] = DB.EjecutarScriptSql(texto);
+            return RedirectToAction("Index", "Home");
+        }
+
+        [HttpPost]
+        public IActionResult EjecutarEstadoHidricoSql() {
+            string texto = LeeScript("2026-08-14-estado-hidrico-uc.sql");
+            if (texto == null) { TempData["error"] = "No se encontró el script sql/2026-08-14-estado-hidrico-uc.sql"; return RedirectToAction("Index", "Home"); }
+            TempData["ok"] = DB.EjecutarScriptSql(texto);
+            // Sin esto habría que reiniciar: la existencia de la tabla se comprueba una vez.
+            DB.EstadoHidricoTablaOlvidaComprobacion();
             return RedirectToAction("Index", "Home");
         }
 

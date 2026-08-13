@@ -88,6 +88,8 @@
     // La tabla de claves de API: si ya existe, enlaza a Swagger; si no, ofrece crearla.
     if (Model.TablaApiKeyExiste) enlaces["Claves de API"] = "/swagger/index.html";
     else acciones["Claves de API"] = "EjecutarApiKeySql";
+    // Igual con el estado hídrico materializado: si no está la tabla, la casilla la crea.
+    if (!Model.TablaEstadoHidricoExiste) acciones["Estado hídrico guardado"] = "EjecutarEstadoHidricoSql";
 
     var estiloBoton = "width:100%;text-align:left;font:inherit;background:#fff;cursor:pointer";
 }

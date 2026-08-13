@@ -60,10 +60,8 @@
                 string idTemporada = DB.TemporadaDeFecha(idUnidadCultivo, dFecha);
                 if (!DB.EstaAutorizado(idUsuario, role, idUnidadCultivo, idTemporada))
                     return Unauthorized();
-                return CacheDatosHidricos.Cache(Request.Path.ToString() + "Usuario" + idUsuario.ToString(), () => {
-                    BalanceHidrico bh = BalanceHidrico.Balance(idUnidadCultivo, dFecha);
-                    return Ok(bh.DatosEstadoHidrico(dFecha));
-                });
+                return CacheDatosHidricos.Cache(Request.Path.ToString() + "Usuario" + idUsuario.ToString(),
+                    () => Ok(EstadoHidricoMaterializado.Obtener(idUnidadCultivo, dFecha)));
 
             } catch (Exception ex) {
                 Log.Error("api/DatosHidricos - UC:" + idUnidadCultivo + " fecha:" + fecha, ex);

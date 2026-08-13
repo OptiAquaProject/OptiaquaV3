@@ -52,14 +52,7 @@ namespace WebApi {
                 DateTime fecha = (t != null && t.FechaFinal < DateTime.Today) ? t.FechaFinal : DateTime.Today;
                 List<string> lUC = DB.UnidadesDeUsuario(idUsuario, role, idTemporada);
                 ViewBag.NTotal = lUC.Count;
-                foreach (var idUC in lUC.Take(200)) {
-                    try {
-                        var bh = BalanceHidrico.Balance(idUC, fecha);
-                        if (bh != null) lista.Add(bh.DatosEstadoHidrico(fecha));
-                    } catch (Exception ex) {
-                        lista.Add(new DatosEstadoHidrico { IdUnidadCultivo = idUC, IdTemporada = idTemporada, Status = "ERROR: " + ex.Message });
-                    }
-                }
+                lista = EstadoHidricoMaterializado.ObtenerLista(idTemporada, lUC.Take(200), fecha);
             } catch (Exception ex) { Log.Error("Home/MiZona", ex); ViewBag.Error = ex.Message; }
             ViewBag.IdTemporada = idTemporada;
             ViewBag.EsGestor = role == "asesor";

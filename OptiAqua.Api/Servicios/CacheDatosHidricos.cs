@@ -181,13 +181,19 @@
                         List<string> lIdUnidadCultivo = db.Fetch<string>("SELECT DISTINCT IdUnidadCultivo from UnidadCultivoCultivo WHERE IdTemporada=@0", idTemporada);
                         foreach (string idUC in lIdUnidadCultivo) {
                             try {
-                                // El balance se calcula pero NO se memoriza. Antes esta pasada
-                                // dejaba en memoria los 1.264 balances (211 MB medidos, y más de
-                                // 1 GB con una temporada configurada del todo) para ahorrar unos
-                                // 13 ms por unidad de cultivo. Lo que sí hace falta de esta pasada
-                                // es actualizar las fechas de etapa y sacar a la luz las unidades
-                                // que no calculan; la caché se llena sola con lo que se consulte.
-                                BalanceHidrico.Balance(idUC, fechaCalculo, true, false);
+                                // El balance se calcula pero NO se memoriza en RAM. Antes esta
+                                // pasada dejaba en memoria los 1.264 balances (211 MB medidos, y
+                                // más de 1 GB con una temporada configurada del todo) para
+                                // ahorrar unos 13 ms por unidad de cultivo.
+                                //
+                                // Lo que sí deja escrito es el estado hídrico materializado, que
+                                // es lo que abren el regante y el panel: se recalcula sin mirar
+                                // lo guardado (usarMaterializado: false) y se reescribe la fila.
+                                // Y de paso se actualizan las fechas de etapa y salen a la luz
+                                // las unidades de cultivo que no calculan.
+                                var estado = EstadoHidricoMaterializado.Obtener(idUC, fechaCalculo, usarMaterializado: false);
+                                if (estado == null)
+                                    BalanceHidrico.Balance(idUC, fechaCalculo, true, false);
                             } catch (Exception ex) {
                                 // Antes se asignaba el mensaje a una variable que nadie leía: el
                                 // fallo de una unidad de cultivo desaparecía sin rastro.
@@ -340,7 +346,29 @@
             Log.Info("Caché de respuestas: descartadas " + aDescartar.Count + " entradas antiguas");
         }
 
+        /// <summary>
+        /// Tira TODO lo memorizado de una temporada, en memoria y en la tabla.
+        /// </summary>
+        internal static void SetDirtyTodo() {
+            ClearAll();
+            DB.EstadoHidricoInvalidarTodo();
+        }
+
+        /// <summary>
+        /// Tira lo memorizado de las unidades de cultivo de una estación climática.
+        /// Es el camino del SIAR: si cambia el clima, deja de valer lo calculado bajo ella.
+        /// </summary>
+        internal static void SetDirtyEstacion(int idEstacion) {
+            DB.EstadoHidricoInvalidarPorEstacion(idEstacion);
+            // La caché en memoria no está indexada por estación y son 300 entradas como
+            // mucho: sale más a cuenta vaciarla que recorrerla resolviendo la estación de
+            // cada unidad de cultivo.
+            lCacheBalances.Clear();
+            lCacheRespuestas.Clear();
+        }
+
         internal static void SetDirtyParcela(int idParcelaInt) {
+            DB.EstadoHidricoInvalidarPorParcela(idParcelaInt);
             var lUC = DB.UnidadCultivosDePacela(idParcelaInt).Select(x => x.IdUC).Distinct();
             foreach (var idUC in lUC) {
                 foreach (var cacheTemporada in lCacheBalances.Values) {
@@ -353,6 +381,7 @@
         }
 
         internal static void SetDirtyUC(string idUC) {
+            DB.EstadoHidricoInvalidarUC(idUC);
             foreach (var cacheTemporada in lCacheBalances.Values) {
                 CacheUnidadCultivo descartado;
                 cacheTemporada.TryRemove(idUC, out descartado);

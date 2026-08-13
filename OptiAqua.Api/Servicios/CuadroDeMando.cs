@@ -26,6 +26,8 @@ namespace DatosOptiaqua {
         public string TemporadaActiva { get; set; }
         /// <summary>Si la tabla ApiKey ya está instalada (para ofrecer o no la acción de crearla).</summary>
         public bool TablaApiKeyExiste { get; set; }
+        /// <summary>Si la tabla EstadoHidricoUC ya está instalada.</summary>
+        public bool TablaEstadoHidricoExiste { get; set; }
         /// <summary>Progreso del recálculo, que puede durar mucho.</summary>
         public EstadoRecalculo Recalculo { get; set; }
         public List<Indicador> Indicadores { get; } = new List<Indicador>();
@@ -132,6 +134,33 @@ namespace DatosOptiaqua {
                 });
 
                 panel.Indicadores.Add(Cuenta(db, "Mapas de suelo", "SELECT COUNT(DISTINCT IdVersion) FROM MapaSuelo", "Versiones importadas"));
+
+                // Estado hídrico materializado. Como la de claves de API, la tabla puede no
+                // existir: sin ella todo funciona calculando, solo que más despacio.
+                try {
+                    bool existeEstado = (db.SingleOrDefault<int?>(
+                        "SELECT COUNT(*) FROM sys.tables WHERE name='EstadoHidricoUC'") ?? 0) > 0;
+                    panel.TablaEstadoHidricoExiste = existeEstado;
+                    if (!existeEstado) {
+                        panel.Indicadores.Add(new Indicador {
+                            Titulo = "Estado hídrico guardado",
+                            Valor = "Sin instalar",
+                            Detalle = "Pulsa para crear la tabla",
+                            Estado = "aviso"
+                        });
+                    } else {
+                        int filas = db.SingleOrDefault<int?>("SELECT COUNT(*) FROM EstadoHidricoUC") ?? 0;
+                        var ultimo = db.SingleOrDefault<DateTime?>("SELECT MAX(FechaCalculo) FROM EstadoHidricoUC");
+                        panel.Indicadores.Add(new Indicador {
+                            Titulo = "Estado hídrico guardado",
+                            Valor = filas.ToString("N0"),
+                            Detalle = ultimo == null ? "Unidades de cultivo al día" : "Último, " + ultimo.Value.ToString("dd/MM/yyyy HH:mm"),
+                            Estado = filas > 0 ? "ok" : "aviso"
+                        });
+                    }
+                } catch (Exception ex) {
+                    Log.Aviso("No se pudo consultar el estado hídrico materializado para el cuadro de mando", ex);
+                }
 
                 // Claves de API. La tabla puede no existir todavía: el script de creación se
                 // entrega aparte y se ejecuta a mano, así que aquí se avisa en vez de fallar.

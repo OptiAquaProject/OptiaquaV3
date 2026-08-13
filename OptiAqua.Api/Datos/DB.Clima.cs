@@ -124,6 +124,10 @@
                         totalCambiadas.AddRange(cambiadas);
                         Log.Info($"SIAR estación {idEstacion}: {cambiadas.Count} día(s) con cambios, desde {cambiadas.Min():dd/MM/yyyy}" +
                                  $" (se han pedido {(hastaFecha - desdeFecha).Days + 1})");
+                        // Solo si ha cambiado algo de verdad: lo calculado bajo esta estación
+                        // deja de valer. Es justo el motivo de comparar antes de escribir; si
+                        // no, esto se dispararía cada mañana para las 23 estaciones.
+                        CacheDatosHidricos.SetDirtyEstacion(idEstacion);
                     }
                     // datClima vacío == el SIAR no ha devuelto nada para esta estación. Antes se
                     // le pedía el Max a una lista vacía, que lanza, y como el try envuelve el
