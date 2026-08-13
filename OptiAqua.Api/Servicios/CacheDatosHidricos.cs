@@ -148,6 +148,21 @@
         /// La lanza el planificador una vez al día y también el botón del cuadro de mando.
         /// </summary>
         /// <returns>Lo ocurrido, para poder enseñarlo en el panel.</returns>
+        /// <summary>
+        /// Parámetro de Config donde se anota cuándo terminó la última pasada diaria.
+        /// </summary>
+        public const string MarcaUltimaPasada = "FechaUltimaPasadaDiaria";
+
+        /// <summary>Cuándo terminó la última pasada diaria, o null si no consta ninguna.</summary>
+        public static DateTime? UltimaPasadaDiaria() {
+            try {
+                return Config.GetDateTime(MarcaUltimaPasada);
+            } catch (Exception ex) {
+                Log.Aviso("No se pudo leer la fecha de la última pasada diaria", ex);
+                return null;
+            }
+        }
+
         public static string PasadaDiaria() {
             if (Interlocked.CompareExchange(ref enRecalculo, 1, 0) == 1)
                 return "ya se está recalculando";
@@ -160,6 +175,11 @@
                 string suelos = RecalculaSuelosInterno();
                 RecalculaEstados();
                 correcto = true;
+                // La marca es lo que permite recuperar la pasada si el proceso no estaba vivo
+                // a la hora prevista: ver TareaRecalculoDiario.
+                try { Config.SetDateTime(MarcaUltimaPasada, DateTime.Now); } catch (Exception ex) {
+                    Log.Aviso("No se pudo anotar la fecha de la última pasada diaria", ex);
+                }
                 string resumen = $"Pasada diaria terminada en {cronometro.Elapsed.TotalSeconds:N0} s. Suelos: {suelos}";
                 DB.InsertaEvento(resumen);
                 return resumen;

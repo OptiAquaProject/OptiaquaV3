@@ -166,8 +166,18 @@ try {
         q.AddTrigger(opciones => opciones
             .ForJob(clave)
             .WithIdentity("RecalculoDiario-disparador")
-            .WithCronSchedule(config["Tareas:CronRecalculo"] ?? "0 0 9 * * ?",
+            .WithCronSchedule(config["Tareas:CronRecalculo"] ?? TareaRecalculoDiario.CronPorDefecto,
                               x => x.InTimeZone(zonaTareas)));
+        // Segundo disparador, una sola vez al arrancar: recupera la pasada si el proceso no
+        // estaba vivo a su hora. El planificador es en memoria y muere con el proceso; en IIS
+        // el grupo de aplicaciones se apaga por inactividad a los 20 minutos, y de madrugada
+        // no entra nadie. La tarea comprueba por su cuenta si hace falta y, si no, no hace
+        // nada: el minuto de espera es para no competir con el arranque.
+        q.AddTrigger(opciones => opciones
+            .ForJob(clave)
+            .WithIdentity(TareaRecalculoDiario.DisparadorArranque)
+            .StartAt(DateTimeOffset.Now.AddMinutes(1))
+            .WithSimpleSchedule(x => x.WithRepeatCount(0)));
     });
     builder.Services.AddQuartzHostedService(opciones => opciones.WaitForJobsToComplete = true);
 
