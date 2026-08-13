@@ -1,0 +1,37 @@
+@model Models.Regante
+@{ ViewBag.Title = "Editor de regante"; bool nuevo = Model.IdRegante == 0; }
+
+<h2 class="mb-3">@(nuevo ? "Nuevo regante" : "Regante " + Model.IdRegante)</h2>
+<partial name="_MensajesPanel" />
+
+<form method="post" asp-action="ReganteGuardar" style="max-width:820px">
+    <input type="hidden" name="IdRegante" value="@Model.IdRegante" />
+    <div class="row g-3">
+        <div class="col-md-3"><label class="form-label">NIF</label><input name="NIF" value="@Model.NIF" class="form-control" required></div>
+        <div class="col-md-6"><label class="form-label">Nombre</label><input name="Nombre" value="@Model.Nombre" class="form-control"></div>
+        <div class="col-md-3"><label class="form-label">Rol</label>
+            <select name="Role" class="form-select">
+                @foreach (var rol in new[] { "dbo", "asesor", "admin" }) {
+                    if (Model.Role == rol) { <option value="@rol" selected>@rol</option> } else { <option value="@rol">@rol</option> }
+                }
+            </select>
+        </div>
+        <div class="col-md-6"><label class="form-label">Dirección</label><input name="Direccion" value="@Model.Direccion" class="form-control"></div>
+        <div class="col-md-2"><label class="form-label">C.P.</label><input name="CodigoPostal" value="@Model.CodigoPostal" class="form-control"></div>
+        <div class="col-md-4"><label class="form-label">Población</label><input name="Poblacion" value="@Model.Poblacion" class="form-control"></div>
+        <div class="col-md-4"><label class="form-label">Provincia</label><input name="Provincia" value="@Model.Provincia" class="form-control"></div>
+        <div class="col-md-2"><label class="form-label">País</label><input name="Pais" value="@Model.Pais" class="form-control"></div>
+        <div class="col-md-3"><label class="form-label">Teléfono</label><input name="Telefono" value="@Model.Telefono" class="form-control"></div>
+        <div class="col-md-3"><label class="form-label">Teléfono SMS</label><input name="TelefonoSMS" value="@Model.TelefonoSMS" class="form-control"></div>
+        <div class="col-md-6"><label class="form-label">Email</label><input name="Email" value="@Model.Email" class="form-control"></div>
+    </div>
+
+    <hr class="my-4" />
+    <p class="text-muted">Guardar requiere credenciales de administrador. @(nuevo ? "Al crear un regante se genera su contraseña por defecto (Pass+Id)." : "La contraseña del regante NO se modifica al editar la ficha.")</p>
+    <div class="row g-2 mb-3">
+        <div class="col-auto"><input name="adminNif" class="form-control" placeholder="Usuario admin"></div>
+        <div class="col-auto"><input name="adminPass" type="password" class="form-control" placeholder="Contraseña"></div>
+    </div>
+    <button class="btn btn-success">Guardar</button>
+    <a class="btn btn-outline-secondary" asp-action="Regantes">Cancelar</a>
+</form>

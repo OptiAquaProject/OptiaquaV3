@@ -1,0 +1,30 @@
+@model List<Models.ParcelaPoco>
+@{ ViewBag.Title = "Parcelas"; }
+
+<h2 class="mb-3">Parcelas <a class="btn btn-sm btn-outline-secondary ms-2" asp-controller="Home" asp-action="Index">&laquo; Cuadro de mando</a></h2>
+<partial name="_MensajesPanel" />
+
+<form method="get" class="d-flex gap-2 mb-3">
+    <input name="buscar" value="@ViewBag.Buscar" class="form-control form-control-sm" placeholder="Buscar por descripción, ref. catastral o Id" style="min-width:320px">
+    <button class="btn btn-sm btn-outline-secondary">Buscar</button>
+</form>
+
+<table class="table table-hover table-sm align-middle">
+    <thead><tr><th>Id</th><th>Regante</th><th>Descripción</th><th>Superficie (m²)</th><th>Mun.</th><th>Pol.</th><th>Parc.</th><th>Ref. catastral</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var p in Model) {
+        <tr>
+            <td>@p.IdParcelaInt</td>
+            <td>@p.IdRegante</td>
+            <td>@p.Descripcion</td>
+            <td>@p.SuperficieM2.ToString("N0")</td>
+            <td>@p.IdMunicipio</td>
+            <td>@p.IdPoligono</td>
+            <td>@p.IdParcela</td>
+            <td>@p.RefCatastral</td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="ParcelaEditor" asp-route-id="@p.IdParcelaInt">Editar</a></td>
+        </tr>
+    }
+    </tbody>
+</table>
+<p class="text-muted"><small>@Model.Count parcelas (máximo 500).</small></p>

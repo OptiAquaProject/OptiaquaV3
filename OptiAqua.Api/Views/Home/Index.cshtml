@@ -22,6 +22,8 @@
     <p>Aplicación para la optimización del regadío</p>
 </div>
 
+<partial name="_MensajesPanel" />
+
 @if (!Model.BaseDatosOperativa) {
     <div class="alert alert-danger">
         <h4 class="alert-heading">La base de datos no responde</h4>
@@ -69,15 +71,37 @@
     <p class="text-muted"><small><strong>Último recálculo —</strong> @Model.Recalculo.UltimaEjecucion</small></p>
 }
 
+@{
+    // Cada tarjeta enlaza a su página del panel según el título.
+    var enlaces = new Dictionary<string, string> {
+        ["Temporadas"] = Url.Action("Temporadas", "Panel"),
+        ["Unidades de cultivo"] = Url.Action("UnidadesCultivo", "Panel"),
+        ["Regantes"] = Url.Action("Regantes", "Panel"),
+        ["Parcelas"] = Url.Action("Parcelas", "Panel"),
+        ["Mapas de suelo"] = Url.Action("ImportacionMapas", "Importacion"),
+        ["Claves de API"] = "/swagger/index.html#/ApiKeys",
+    };
+}
 @if (Model.Indicadores.Count > 0) {
     <div class="row g-3">
         @foreach (var indicador in Model.Indicadores) {
+            var url = enlaces.ContainsKey(indicador.Titulo) ? enlaces[indicador.Titulo] : null;
             <div class="col-md-4 col-lg-3">
-                <div class="oa-tarjeta oa-@indicador.Estado">
-                    <div class="oa-titulo">@indicador.Titulo</div>
-                    <div class="oa-valor">@indicador.Valor</div>
-                    <div class="oa-detalle">@indicador.Detalle</div>
-                </div>
+                @if (url != null) {
+                    <a href="@url" class="text-decoration-none">
+                        <div class="oa-tarjeta oa-@indicador.Estado" style="cursor:pointer">
+                            <div class="oa-titulo">@indicador.Titulo &raquo;</div>
+                            <div class="oa-valor">@indicador.Valor</div>
+                            <div class="oa-detalle">@indicador.Detalle</div>
+                        </div>
+                    </a>
+                } else {
+                    <div class="oa-tarjeta oa-@indicador.Estado">
+                        <div class="oa-titulo">@indicador.Titulo</div>
+                        <div class="oa-valor">@indicador.Valor</div>
+                        <div class="oa-detalle">@indicador.Detalle</div>
+                    </div>
+                }
             </div>
         }
     </div>
@@ -85,8 +109,27 @@
     <p class="text-muted mt-2"><small>Datos a @Model.Generado.ToString("dd/MM/yyyy HH:mm:ss")</small></p>
 }
 
+@* ===== Acciones de administración ===== *@
+<div class="card border-secondary mt-3">
+    <div class="card-body">
+        <h5 class="card-title">Acciones de administración</h5>
+        <p class="text-muted mb-2"><small>Requieren usuario y contraseña de administrador.</small></p>
+        <form method="post">
+            <div class="row g-2 mb-2">
+                <div class="col-auto"><input name="adminNif" class="form-control form-control-sm" placeholder="Usuario admin"></div>
+                <div class="col-auto"><input name="adminPass" type="password" class="form-control form-control-sm" placeholder="Contraseña"></div>
+            </div>
+            <button class="btn btn-sm btn-warning" formaction="@Url.Action("RecalculoTotal", "Panel")">Recálculo total</button>
+            <button class="btn btn-sm btn-outline-primary" formaction="@Url.Action("RefrescarSiar", "Panel")">Actualizar datos del SIAR</button>
+            <button class="btn btn-sm btn-outline-success" formaction="@Url.Action("EjecutarApiKeySql", "Panel")">Crear tabla de claves de API (ejecutar SQL)</button>
+        </form>
+    </div>
+</div>
+
 @if (Model.UltimosEventos.Count > 0) {
-    <h4 class="mt-4">Últimos eventos registrados</h4>
+    <h4 class="mt-4">Últimos eventos registrados
+        <a class="btn btn-sm btn-outline-secondary ms-2" asp-controller="Panel" asp-action="Eventos">Ver todos y filtrar &raquo;</a>
+    </h4>
     <div class="oa-eventos">
         @foreach (var evento in Model.UltimosEventos) {
             <div>@evento</div>

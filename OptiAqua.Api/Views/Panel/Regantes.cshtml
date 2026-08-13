@@ -1,0 +1,31 @@
+@model List<Models.Regante>
+@{ ViewBag.Title = "Regantes"; }
+
+<h2 class="mb-3">Regantes <a class="btn btn-sm btn-outline-secondary ms-2" asp-controller="Home" asp-action="Index">&laquo; Cuadro de mando</a></h2>
+<partial name="_MensajesPanel" />
+
+<div class="d-flex justify-content-between mb-3">
+    <form method="get" class="d-flex gap-2">
+        <input name="buscar" value="@ViewBag.Buscar" class="form-control form-control-sm" placeholder="Buscar por nombre, NIF o Id" style="min-width:280px">
+        <button class="btn btn-sm btn-outline-secondary">Buscar</button>
+    </form>
+    <a class="btn btn-sm btn-success" asp-action="ReganteEditor">+ Nuevo regante</a>
+</div>
+
+<table class="table table-hover table-sm align-middle">
+    <thead><tr><th>Id</th><th>NIF</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Rol</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model) {
+        <tr>
+            <td>@r.IdRegante</td>
+            <td>@r.NIF</td>
+            <td>@r.Nombre</td>
+            <td>@r.Telefono</td>
+            <td>@r.Email</td>
+            <td><span class="badge bg-secondary">@r.Role</span></td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="ReganteEditor" asp-route-id="@r.IdRegante">Editar</a></td>
+        </tr>
+    }
+    </tbody>
+</table>
+<p class="text-muted"><small>@Model.Count regantes.</small></p>

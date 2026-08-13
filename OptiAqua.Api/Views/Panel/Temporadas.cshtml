@@ -1,0 +1,34 @@
+@model List<DatosOptiaqua.DB.TemporadaItem>
+@{ ViewBag.Title = "Temporadas"; }
+
+<h2 class="mb-3">Temporadas <a class="btn btn-sm btn-outline-secondary ms-2" asp-controller="Home" asp-action="Index">&laquo; Cuadro de mando</a></h2>
+<partial name="_MensajesPanel" />
+<p class="text-muted">Marca una temporada como <b>predeterminada (activa)</b>. Requiere credenciales de administrador.</p>
+
+<form method="post" asp-action="TemporadaActivar">
+    <div class="row g-2 mb-3">
+        <div class="col-auto"><input name="adminNif" class="form-control form-control-sm" placeholder="Usuario admin"></div>
+        <div class="col-auto"><input name="adminPass" type="password" class="form-control form-control-sm" placeholder="Contraseña"></div>
+    </div>
+    <table class="table table-hover align-middle">
+        <thead><tr><th>Temporada</th><th>Descripción</th><th>Inicio</th><th>Fin</th><th>UC</th><th>Mapa</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var t in Model) {
+            <tr class="@(t.Activa ? "table-success" : "")">
+                <td><b>@t.IdTemporada</b></td>
+                <td>@t.Descripcion</td>
+                <td>@t.FechaInicial.ToShortDateString()</td>
+                <td>@t.FechaFinal.ToShortDateString()</td>
+                <td>@t.NUnidadesCultivo</td>
+                <td>@t.IdVersionMapa</td>
+                <td>@(t.Activa ? "Activa" : "")</td>
+                <td class="text-end">
+                    @if (!t.Activa) {
+                        <button class="btn btn-sm btn-outline-primary" name="idTemporada" value="@t.IdTemporada">Hacer activa</button>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</form>

@@ -1,0 +1,24 @@
+@model Models.ParcelaPoco
+@{ ViewBag.Title = "Editor de parcela"; }
+
+<h2 class="mb-3">Parcela @Model.IdParcelaInt</h2>
+<partial name="_MensajesPanel" />
+
+<form method="post" asp-action="ParcelaGuardar" style="max-width:720px">
+    <input type="hidden" name="idParcelaInt" value="@Model.IdParcelaInt" />
+    <div class="row g-3">
+        <div class="col-md-8"><label class="form-label">Descripción</label><input name="descripcion" value="@Model.Descripcion" class="form-control"></div>
+        <div class="col-md-4"><label class="form-label">Regante (Id)</label><input name="idRegante" type="number" value="@Model.IdRegante" class="form-control"></div>
+        <div class="col-md-4"><label class="form-label">Superficie (m²)</label><input name="superficieM2" type="number" step="any" value="@Model.SuperficieM2" class="form-control"></div>
+    </div>
+    <p class="text-muted mt-3"><small>Municipio @Model.IdMunicipio · Polígono @Model.IdPoligono · Parcela @Model.IdParcela · Ref. @Model.RefCatastral (no editables aquí). La geometría no se modifica.</small></p>
+
+    <hr class="my-4" />
+    <p class="text-muted">Guardar requiere credenciales de administrador.</p>
+    <div class="row g-2 mb-3">
+        <div class="col-auto"><input name="adminNif" class="form-control" placeholder="Usuario admin"></div>
+        <div class="col-auto"><input name="adminPass" type="password" class="form-control" placeholder="Contraseña"></div>
+    </div>
+    <button class="btn btn-success">Guardar</button>
+    <a class="btn btn-outline-secondary" asp-action="Parcelas">Cancelar</a>
+</form>
