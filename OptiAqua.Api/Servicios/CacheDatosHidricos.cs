@@ -175,8 +175,12 @@
             try {
                 DB.InsertaEvento("Inicia recalculando suelos" + DateTime.Now.ToString());
                 var ret = new List<SueloUnidadCultivoTemporada>();
+                int unidadesFallidas = 0;
                 var lTemporadas = DB.TemporadasList();
                 using (var db = Conexion.Nueva()) {
+                    // Cuántas filas hay antes de empezar: es la referencia para no dejar la tabla
+                    // peor de como estaba (ver la guarda de más abajo).
+                    int filasAntes = db.SingleOrDefault<int?>("SELECT COUNT(*) FROM SueloUnidadCultivoTemporada") ?? 0;
                     ProgresoRecalculo.CambiaFase("Contando unidades de cultivo");
                     try {
                         int totalUC = db.SingleOrDefault<int?>(
@@ -211,11 +215,28 @@
                                     });
                                 }
                             } catch (Exception ex) {
+                                unidadesFallidas++;
                                 ProgresoRecalculo.ApuntaError();
                                 Log.Aviso("No se pudieron obtener los datos de suelo de la unidad de cultivo " + idUC + " en la temporada " + idTemporada, ex);
                             }
                             ProgresoRecalculo.Avanza(idUC + " (" + idTemporada + ")");
                         }
+                    }
+
+                    // No se borra lo que hay si el recálculo ha salido peor. La transacción de
+                    // abajo garantiza que el borrado y la carga van juntos, pero no protege del
+                    // caso de verdad peligroso: que el cálculo falle en casi todas las unidades y
+                    // se sustituyan miles de filas buenas por cuatro. Pasó: mientras faltó el
+                    // ensamblado de tipos espaciales, 1.263 de 1.264 unidades lanzaban excepción y
+                    // este método habría dejado la tabla vacía, con todos los balances muriendo
+                    // después por "No se ha definido suelo".
+                    if (ret.Count == 0 || (unidadesFallidas > 0 && ret.Count < filasAntes)) {
+                        string aviso = $"Recálculo de suelos DESCARTADO: salen {ret.Count:N0} filas frente a las " +
+                                       $"{filasAntes:N0} que ya había, y {unidadesFallidas:N0} unidades de cultivo han fallado. " +
+                                       "No se toca la tabla; el motivo de cada fallo está en el registro.";
+                        Log.Info(aviso);
+                        DB.InsertaEvento(aviso);
+                        return aviso;
                     }
 
                     // Borrado y recarga dentro de una transacción: antes, si el InsertBulk fallaba

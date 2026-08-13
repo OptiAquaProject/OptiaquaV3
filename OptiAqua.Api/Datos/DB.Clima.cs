@@ -40,14 +40,63 @@
         }
 
         /// <summary>
-        /// DatosClimaticosSave.
+        /// Guarda los datos climáticos que llegan del SIAR, ESCRIBIENDO SOLO LO QUE CAMBIA.
+        ///
+        /// Cada pasada se pide al SIAR una ventana de varios días hacia atrás
+        /// (ActualizarDatosClimaticosNDias), porque el SIAR corrige y completa días ya
+        /// publicados. Pero la inmensa mayoría de esos días vuelven idénticos: escribirlos
+        /// todos con Save reescribía cada mañana ~5 días por estación sin ningún cambio real.
+        /// Eso no molesta hoy, pero deja sin base cualquier invalidación por fecha —todo
+        /// aparecería tocado a diario— y de paso ensucia la auditoría de la tabla.
         /// </summary>
-        /// <param name="lDatClima">lDatClima<see cref="List{DatoClimatico}"/>.</param>
-        private static void DatosClimaticosSave(List<DatoClimatico> lDatClima) {
+        /// <param name="lDatClima">Los días que ha devuelto el SIAR.</param>
+        /// <returns>
+        /// Las fechas en las que de verdad ha cambiado algo (altas y modificaciones).
+        /// Vacía si el SIAR ha devuelto lo mismo que ya había.
+        /// </returns>
+        private static List<DateTime> DatosClimaticosSave(List<DatoClimatico> lDatClima) {
+            var cambiadas = new List<DateTime>();
+            if (lDatClima == null || lDatClima.Count == 0)
+                return cambiadas;
+
             Database db = DB.ConexionOptiaqua;
+            DateTime desde = lDatClima.Min(x => x.Fecha).Date;
+            DateTime hasta = lDatClima.Max(x => x.Fecha).Date;
+            int idEstacion = lDatClima[0].IdEstacion;
+
+            // Una sola lectura del tramo, en vez de una por día.
+            var existentes = db.Fetch<DatoClimatico>(
+                    "select Fecha, IdEstacion, TempMedia, HumedadMedia, VelViento, Precipitacion, Eto" +
+                    " from DatoClimatico where Fecha between @0 and @1 and IdEstacion=@2", desde, hasta, idEstacion)
+                .ToDictionary(x => x.Fecha.Date);
+
             foreach (DatoClimatico datCli in lDatClima) {
-                db.Save(datCli);
+                if (!existentes.TryGetValue(datCli.Fecha.Date, out var actual)) {
+                    db.Insert(datCli);
+                    cambiadas.Add(datCli.Fecha.Date);
+                    continue;
+                }
+                if (EsElMismoDato(actual, datCli))
+                    continue;
+                db.Update(datCli);
+                cambiadas.Add(datCli.Fecha.Date);
             }
+            return cambiadas;
+        }
+
+        /// <summary>
+        /// Compara dos días de la misma estación campo a campo.
+        /// La comparación es por igualdad exacta salvo una tolerancia mínima: el valor viaja
+        /// como double y se guarda en una columna float, así que el viaje de ida y vuelta es
+        /// exacto; la tolerancia solo cubre el ruido de la última cifra binaria.
+        /// </summary>
+        private static bool EsElMismoDato(DatoClimatico a, DatoClimatico b) {
+            const double tolerancia = 1e-9;
+            return Math.Abs(a.TempMedia - b.TempMedia) < tolerancia
+                && Math.Abs(a.HumedadMedia - b.HumedadMedia) < tolerancia
+                && Math.Abs(a.VelViento - b.VelViento) < tolerancia
+                && Math.Abs(a.Precipitacion - b.Precipitacion) < tolerancia
+                && Math.Abs(a.Eto - b.Eto) < tolerancia;
         }
 
         /// <summary>
@@ -67,10 +116,19 @@
                 DateTime desdeFecha = ((DateTime)ultimaFechaEnTabla).AddDays(-nDiasAtras); // Añado 4 días a la lista
                 DateTime hastaFecha = DateTime.Today;
 
+                var totalCambiadas = new List<DateTime>();
                 foreach (var idEstacion in lEstaciones) {
                     List<DatoClimatico> datClima = Siar.DatosClimaticos.DatosClimaticosSiarList_V2(desdeFecha, hastaFecha, idEstacion);
-                    DB.DatosClimaticosSave(datClima);
-                    if (nDiasAtras + 1 != datClima.Count && datClima.Max(x => x.Fecha) != DateTime.Today) {
+                    var cambiadas = DB.DatosClimaticosSave(datClima);
+                    if (cambiadas.Count > 0) {
+                        totalCambiadas.AddRange(cambiadas);
+                        Log.Info($"SIAR estación {idEstacion}: {cambiadas.Count} día(s) con cambios, desde {cambiadas.Min():dd/MM/yyyy}" +
+                                 $" (se han pedido {(hastaFecha - desdeFecha).Days + 1})");
+                    }
+                    // datClima vacío == el SIAR no ha devuelto nada para esta estación. Antes se
+                    // le pedía el Max a una lista vacía, que lanza, y como el try envuelve el
+                    // bucle entero se quedaban sin actualizar TODAS las estaciones siguientes.
+                    if (datClima.Count == 0 || (nDiasAtras + 1 != datClima.Count && datClima.Max(x => x.Fecha) != DateTime.Today)) {
                         emailNotificacionErrorDatosClimaticos = DB.ConfigLoad("EmailNotificacionErrorDatosClimaticos");
                         var subject = "Error en lectura de datos climáticos. Fecha: " + hastaFecha.Date.ToShortDateString();
                         var body = DateTime.Now + " -" + subject;
@@ -83,6 +141,10 @@
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
                     }
                 }
+                if (totalCambiadas.Count == 0)
+                    Log.Info($"SIAR: {lEstaciones.Count} estaciones consultadas desde {desdeFecha:dd/MM/yyyy}, ningún dato ha cambiado.");
+                else
+                    Log.Info($"SIAR: {totalCambiadas.Count} día-estación con cambios; el más antiguo, {totalCambiadas.Min():dd/MM/yyyy}.");
             } catch {
                 emailNotificacionErrorDatosClimaticos = DB.ConfigLoad("EmailNotificacionErrorDatosClimaticos");
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed

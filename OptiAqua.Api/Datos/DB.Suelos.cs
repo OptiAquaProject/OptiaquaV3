@@ -295,8 +295,13 @@
             var lDatosSueloParcelas = new List<DatosSuelo>();
             var idVersionMapa = db.Single<string>($"select IdVersionMapa from Temporada where idTemporada='{idTemporada}'");
             if (idVersionMapa != null) {
-                var sqlParcelas = $"select * from ParcelasDeUC where IdTemporada='{idTemporada}' and IdUnidadCultivo='{idUC}'";
-                var lParcelas = db.Fetch<ParcelaPoco>(sqlParcelas);
+                // Las columnas van ENUMERADAS a propósito. La vista trae una columna GEO de tipo
+                // geometry; con "select *" el driver intenta materializar ese UDT y muere con
+                // FileNotFoundException de 'Microsoft.SqlServer.Types', que es un ensamblado del
+                // .NET Framework que no existe aquí. Nadie usa la geometría en este camino.
+                var sqlParcelas = "select IdParcelaInt, Latitud, Longitud, RefCatastral, SuperficieM2" +
+                                  " from ParcelasDeUC where IdTemporada=@0 and IdUnidadCultivo=@1";
+                var lParcelas = db.Fetch<ParcelaPoco>(sqlParcelas, idTemporada, idUC);
                 foreach (var parcela in lParcelas) {
                     var lDsBase = DatosSueloBaseNew(idVersionMapa, parcela.IdParcelaInt, parcela.Latitud, parcela.Longitud, parcela.RefCatastral);
                     if (lDsBase != null) {
