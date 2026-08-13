@@ -1,0 +1,16 @@
+@{ string returnUrl = ViewBag.ReturnUrl as string; }
+<form method="post" asp-controller="Cuenta" asp-action="Login" style="max-width:360px">
+    <input type="hidden" name="returnUrl" value="@returnUrl" />
+    @if (ViewBag.Error != null) {
+        <div class="alert alert-danger py-2">@ViewBag.Error</div>
+    }
+    <div class="mb-2">
+        <label class="form-label">Usuario (NIF)</label>
+        <input name="nif" value="@ViewBag.Nif" class="form-control" autofocus required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input name="pass" type="password" class="form-control" required>
+    </div>
+    <button class="btn btn-primary w-100">Entrar</button>
+</form>

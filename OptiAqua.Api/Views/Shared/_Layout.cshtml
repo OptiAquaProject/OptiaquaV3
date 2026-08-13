@@ -21,8 +21,20 @@
             <div class="collapse navbar-collapse" id="menuPrincipal">
                 <ul class="navbar-nav">
                     <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Inicio</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-controller="Importacion" asp-action="Importacion">Importación</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/swagger">API</a></li>
+                    @if (User.IsInRole("admin")) {
+                        <li class="nav-item"><a class="nav-link" asp-controller="Panel" asp-action="Regantes">Regantes</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Panel" asp-action="Parcelas">Parcelas</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Importacion" asp-action="Importacion">Importación</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/swagger">API</a></li>
+                    }
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    @if (User?.Identity != null && User.Identity.IsAuthenticated) {
+                        <li class="nav-item"><span class="navbar-text me-2">@User.Identity.Name (@(User.IsInRole("admin") ? "admin" : User.IsInRole("asesor") ? "gestor" : "usuario"))</span></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Cuenta" asp-action="Logout">Salir</a></li>
+                    } else {
+                        <li class="nav-item"><a class="nav-link" asp-controller="Cuenta" asp-action="Login">Entrar</a></li>
+                    }
                 </ul>
             </div>
         </div>

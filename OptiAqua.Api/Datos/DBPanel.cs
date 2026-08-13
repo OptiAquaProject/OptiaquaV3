@@ -125,6 +125,27 @@ namespace DatosOptiaqua {
             }
         }
 
+        // ---- Unidades de cultivo visibles por el usuario según su rol -------------------
+
+        /// <summary>
+        /// Identificadores de las unidades de cultivo que puede consultar el usuario:
+        ///  - admin: todas las de la temporada;
+        ///  - asesor (gestor): las que tiene asignadas (de sus representados);
+        ///  - dbo (usuario): sólo las suyas en la temporada.
+        /// </summary>
+        public static List<string> UnidadesDeUsuario(int idRegante, string role, string idTemporada) {
+            using (var db = Conexion.Nueva()) {
+                if (role == "admin")
+                    return db.Fetch<string>("SELECT DISTINCT IdUnidadCultivo FROM UnidadCultivoCultivo WHERE IdTemporada=@0", idTemporada);
+                if (role == "asesor")
+                    return db.Fetch<string>("SELECT DISTINCT IdUnidadCultivo FROM AsesorUnidadCultivo WHERE IdRegante=@0", idRegante);
+                // dbo (usuario)
+                return db.Fetch<string>(
+                    "SELECT DISTINCT IdUnidadCultivo FROM UnidadCultivoCultivo WHERE IdRegante=@0 AND IdTemporada=@1",
+                    idRegante, idTemporada);
+            }
+        }
+
         // ---- Parcelas (editor) ---------------------------------------------------------
 
         /// <summary>Actualiza los campos descriptivos de una parcela (no toca geometría).</summary>

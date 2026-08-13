@@ -1,9 +1,9 @@
 namespace WebApi {
     using DatosOptiaqua;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Mvc;
     using Models;
-    using OptiAqua.Api.Infraestructura;
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -12,9 +12,10 @@ namespace WebApi {
     using webapi.Utiles;
 
     /// <summary>
-    /// Panel de administración accesible desde el cuadro de mando. Los listados son de lectura;
-    /// las acciones que modifican datos exigen credenciales de administrador (ver AdminGate).
+    /// Panel de administración. Requiere sesión iniciada con rol de administrador (cookie).
+    /// Ya no se piden usuario y contraseña en cada acción: basta estar identificado como admin.
     /// </summary>
+    [Authorize(AuthenticationSchemes = "Cookies", Roles = "admin")]
     public class PanelController : Controller {
         private readonly IWebHostEnvironment entorno;
         public PanelController(IWebHostEnvironment entorno) { this.entorno = entorno; }
@@ -25,8 +26,7 @@ namespace WebApi {
         }
 
         [HttpPost]
-        public IActionResult TemporadaActivar(string adminNif, string adminPass, string idTemporada) {
-            if (!AdminGate.EsAdmin(adminNif, adminPass, out var error)) { TempData["error"] = error; return RedirectToAction("Temporadas"); }
+        public IActionResult TemporadaActivar(string idTemporada) {
             try {
                 DB.TemporadaSetActiva(idTemporada);
                 TempData["ok"] = "Temporada activa: " + idTemporada;
@@ -56,8 +56,7 @@ namespace WebApi {
         }
 
         [HttpPost]
-        public IActionResult ReganteGuardar(string adminNif, string adminPass, RegantePost regante) {
-            if (!AdminGate.EsAdmin(adminNif, adminPass, out var error)) { TempData["error"] = error; return View("ReganteEditor", ARegante(regante)); }
+        public IActionResult ReganteGuardar(RegantePost regante) {
             try {
                 var ret = DB.ReganteUpdate(regante);
                 CacheDatosHidricos.SetDirtyContainsKey("/Regante");
@@ -98,8 +97,7 @@ namespace WebApi {
         }
 
         [HttpPost]
-        public IActionResult ParcelaGuardar(string adminNif, string adminPass, int idParcelaInt, string descripcion, int? idRegante, double superficieM2) {
-            if (!AdminGate.EsAdmin(adminNif, adminPass, out var error)) { TempData["error"] = error; return RedirectToAction("ParcelaEditor", new { id = idParcelaInt }); }
+        public IActionResult ParcelaGuardar(int idParcelaInt, string descripcion, int? idRegante, double superficieM2) {
             try {
                 DB.ParcelaGuardarDatos(idParcelaInt, descripcion, idRegante, superficieM2);
                 TempData["ok"] = "Parcela " + idParcelaInt + " guardada.";
@@ -141,8 +139,7 @@ namespace WebApi {
 
         // ===== Acciones de administración =====
         [HttpPost]
-        public IActionResult EjecutarApiKeySql(string adminNif, string adminPass) {
-            if (!AdminGate.EsAdmin(adminNif, adminPass, out var error)) { TempData["error"] = error; return RedirectToAction("Index", "Home"); }
+        public IActionResult EjecutarApiKeySql() {
             string texto = LeeScript("2026-08-12-apikey.sql");
             if (texto == null) { TempData["error"] = "No se encontró el script sql/2026-08-12-apikey.sql"; return RedirectToAction("Index", "Home"); }
             TempData["ok"] = DB.EjecutarScriptSql(texto);
@@ -150,16 +147,14 @@ namespace WebApi {
         }
 
         [HttpPost]
-        public IActionResult RefrescarSiar(string adminNif, string adminPass) {
-            if (!AdminGate.EsAdmin(adminNif, adminPass, out var error)) { TempData["error"] = error; return RedirectToAction("Index", "Home"); }
+        public IActionResult RefrescarSiar() {
             Task.Run(() => { try { DB.DatosClimaticosSiarForceRefresh(); } catch (Exception ex) { Log.Error("Panel/RefrescarSiar", ex); } });
             TempData["ok"] = "Actualización del SIAR lanzada. Puede tardar; revisa los eventos y el cuadro de mando.";
             return RedirectToAction("Index", "Home");
         }
 
         [HttpPost]
-        public IActionResult RecalculoTotal(string adminNif, string adminPass) {
-            if (!AdminGate.EsAdmin(adminNif, adminPass, out var error)) { TempData["error"] = error; return RedirectToAction("Index", "Home"); }
+        public IActionResult RecalculoTotal() {
             if (CacheDatosHidricos.Recalculando) { TempData["error"] = "Ya hay un recálculo en curso."; return RedirectToAction("Index", "Home"); }
             // Se lanza en el propio proceso web para que el panel de progreso lo muestre.
             Task.Run(() => { try { CacheDatosHidricos.RecreateAll(); } catch (Exception ex) { Log.Error("Panel/RecalculoTotal", ex); } });
@@ -168,7 +163,6 @@ namespace WebApi {
         }
 
         private string LeeScript(string nombre) {
-            // El script puede estar junto al proyecto (../sql) o en la salida de compilación.
             var candidatos = new[] {
                 Path.Combine(entorno.ContentRootPath, "..", "sql", nombre),
                 Path.Combine(entorno.ContentRootPath, "sql", nombre),

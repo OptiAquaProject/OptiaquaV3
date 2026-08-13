@@ -85,7 +85,21 @@ try {
     builder.Services.AddHttpClient("riegos", c => c.Timeout = TimeSpan.FromSeconds(30));
     builder.Services.AddHttpClient("sigpac", c => c.Timeout = TimeSpan.FromSeconds(30));
 
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    builder.Services.AddAuthentication(opciones => {
+            // La WEB (navegador) se identifica con cookie de sesión; la API móvil sigue con
+            // JWT o clave de API. Por eso el esquema por defecto es la cookie: las páginas MVC
+            // leen la identidad de la cookie y los retos de autorización redirigen al login.
+            opciones.DefaultScheme = "Cookies";
+            opciones.DefaultChallengeScheme = "Cookies";
+        })
+        .AddCookie("Cookies", opciones => {
+            opciones.LoginPath = "/Cuenta/Login";
+            opciones.AccessDeniedPath = "/Cuenta/Login";
+            opciones.LogoutPath = "/Cuenta/Logout";
+            opciones.ExpireTimeSpan = TimeSpan.FromHours(8);
+            opciones.SlidingExpiration = true;
+            opciones.Cookie.Name = "OptiAqua.Auth";
+        })
         .AddJwtBearer(opciones => {
             opciones.MapInboundClaims = false;   // los claims llegan tal y como se emiten
             opciones.TokenValidationParameters = new TokenValidationParameters {

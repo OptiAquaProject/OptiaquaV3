@@ -1,6 +1,7 @@
 namespace WebApi {
     using DatosOptiaqua;
     using GeoPackageReaderFW;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using System;
@@ -12,32 +13,16 @@ namespace WebApi {
 
     /// <summary>
     /// Importación masiva de unidades de cultivo, análisis de suelo y mapas.
+    /// Requiere sesión de administrador (cookie). Antes pedía usuario y contraseña en cada
+    /// formulario —el parche que originó esta técnica—; ahora basta estar identificado como admin.
     /// </summary>
+    [Authorize(AuthenticationSchemes = "Cookies", Roles = "admin")]
     public class ImportacionController : Controller {
 
-        /// <summary>
-        /// Comprueba las credenciales recibidas por formulario y que correspondan a un administrador.
-        ///
-        /// Estas acciones no pueden apoyarse en [Authorize] porque las invoca un formulario de
-        /// navegador, no un cliente con token JWT. Se sigue el mismo esquema que ImportarUCPost,
-        /// que ya pedía usuario y contraseña.
-        /// </summary>
-        private static bool CredencialesAdminValidas(string nif, string pass, out string error) {
-            error = null;
-            Models.Regante regante;
-            if (!DB.IsCorrectPassword(new Models.LoginRequest { NifRegante = nif, Password = pass }, out regante)) {
-                error = "Usuario o contraseña no válidos";
-                return false;
-            }
-            if (regante == null || regante.Role != "admin") {
-                error = "Esta operación requiere permisos de administrador";
-                return false;
-            }
-            return true;
-        }
+        private string Usuario() => User.Nif() ?? "admin";
 
         public IActionResult Importacion() {
-            ViewBag.Title = "Importación para la creación masica de unidades de cultivo.";
+            ViewBag.Title = "Importación para la creación masiva de unidades de cultivo.";
             return View();
         }
 
@@ -64,14 +49,6 @@ namespace WebApi {
         public string ImportarMapasPost() {
             string fileNameBase = null;
             try {
-                var nif = Request.Form["NifRegante"].ToString();
-                var pass = Request.Form["PassRegante"].ToString();
-                string error;
-                if (!CredencialesAdminValidas(nif, pass, out error)) {
-                    Log.Aviso("Intento de importación de mapas sin credenciales válidas. Usuario indicado: " + nif, null);
-                    return error;
-                }
-
                 if (Request.Form.Files.Count == 0)
                     return "No se ha recibido ningún fichero";
                 IFormFile fichero = Request.Form.Files[0];
@@ -98,13 +75,12 @@ namespace WebApi {
                     return err;
                 }
                 CacheDatosHidricos.RecalculaSuelos();
-                Log.Info("Importado mapa versión " + idVersion + " nivel " + nivel + " por " + nif);
+                Log.Info("Importado mapa versión " + idVersion + " nivel " + nivel + " por " + Usuario());
                 return "OK";
             } catch (Exception ex) {
                 Log.Error("Importación de mapas", ex);
                 return "Error en la importación. Consulte el registro del servidor.";
             } finally {
-                // El temporal se borraba sólo cuando todo iba bien; ante cualquier error quedaba huérfano.
                 try {
                     if (fileNameBase != null && System.IO.File.Exists(fileNameBase))
                         System.IO.File.Delete(fileNameBase);
@@ -117,21 +93,13 @@ namespace WebApi {
         [HttpPost]
         public string EliminarMapas() {
             try {
-                var nif = Request.Form["NifRegante"].ToString();
-                var pass = Request.Form["PassRegante"].ToString();
-                string error;
-                if (!CredencialesAdminValidas(nif, pass, out error)) {
-                    Log.Aviso("Intento de eliminación de mapas sin credenciales válidas. Usuario indicado: " + nif, null);
-                    return error;
-                }
-
                 var idVersion = Request.Form["paramJson[idVersion]"].ToString();
                 int nivel;
                 if (!int.TryParse(Request.Form["paramJson[nivel]"].ToString(), out nivel))
                     return "El nivel indicado no es válido";
 
                 DB.EliminarMapas(idVersion, nivel);
-                Log.Info("Eliminado mapa versión " + idVersion + " nivel " + nivel + " por " + nif);
+                Log.Info("Eliminado mapa versión " + idVersion + " nivel " + nivel + " por " + Usuario());
                 return "OK";
             } catch (Exception ex) {
                 Log.Error("Eliminación de mapas", ex);
@@ -146,35 +114,24 @@ namespace WebApi {
                     return "Error";
                 IFormFile fichero = Request.Form.Files[0];
 
-                var nif = Request.Form["NifRegante"].ToString();
-                var pass = Request.Form["PassRegante"].ToString();
-                Models.Regante regante;
-                if (!DB.IsCorrectPassword(new Models.LoginRequest { NifRegante = nif, Password = pass }, out regante)) {
-                    var lErr = new List<ErrorItem> {
-                        new ErrorItem{NLinea=0, Descripcion="Usuario o contraseña no válidos" }
-                    };
-                    return Newtonsoft.Json.JsonConvert.SerializeObject(lErr);
-                }
-
                 List<ImportItemUCExcel> excel;
                 using (var flujo = fichero.OpenReadStream()) {
                     excel = MiniExcelLibs.MiniExcel.Query<ImportItemUCExcel>(flujo).ToList();
                 }
 
+                // El propietario de cada UC se resuelve por el código del Excel (IdGadminRegante),
+                // no por quien importa; el nif/pass eran vestigiales.
                 int nImportados;
-                var lErrores = ImportarUcFromExcel(nif, pass, excel, out nImportados);
+                var lErrores = ImportarUcFromExcel(Usuario(), "", excel, out nImportados);
                 if (lErrores.Count > 0)
                     return Newtonsoft.Json.JsonConvert.SerializeObject(lErrores);
-                else {
-                    CacheDatosHidricos.RecalculaSuelos();
-                    Log.Info("Importadas " + nImportados + " unidades de cultivo por " + nif);
-                    return "OK:" + nImportados.ToString();
-                }
+                CacheDatosHidricos.RecalculaSuelos();
+                Log.Info("Importadas " + nImportados + " unidades de cultivo por " + Usuario());
+                return "OK:" + nImportados.ToString();
             } catch (Exception ex) {
                 Log.Error("Importación de unidades de cultivo desde Excel", ex);
                 return "Error: no se pudo completar la importación. Consulte el registro del servidor.";
             }
         }
     }
-
 }

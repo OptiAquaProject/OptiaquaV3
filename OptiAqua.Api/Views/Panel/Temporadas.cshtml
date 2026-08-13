@@ -3,13 +3,9 @@
 
 <h2 class="mb-3">Temporadas <a class="btn btn-sm btn-outline-secondary ms-2" asp-controller="Home" asp-action="Index">&laquo; Cuadro de mando</a></h2>
 <partial name="_MensajesPanel" />
-<p class="text-muted">Marca una temporada como <b>predeterminada (activa)</b>. Requiere credenciales de administrador.</p>
+<p class="text-muted">Marca una temporada como <b>predeterminada (activa)</b>.</p>
 
 <form method="post" asp-action="TemporadaActivar">
-    <div class="row g-2 mb-3">
-        <div class="col-auto"><input name="adminNif" class="form-control form-control-sm" placeholder="Usuario admin"></div>
-        <div class="col-auto"><input name="adminPass" type="password" class="form-control form-control-sm" placeholder="Contraseña"></div>
-    </div>
     <table class="table table-hover align-middle">
         <thead><tr><th>Temporada</th><th>Descripción</th><th>Inicio</th><th>Fin</th><th>UC</th><th>Mapa</th><th>Estado</th><th></th></tr></thead>
         <tbody>

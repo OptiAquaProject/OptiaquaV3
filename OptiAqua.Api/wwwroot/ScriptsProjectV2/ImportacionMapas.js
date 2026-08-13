@@ -1,26 +1,12 @@
 ﻿
-// Devuelve las credenciales del formulario, o null si faltan.
-function LeerCredenciales() {
-    var nif = document.getElementById('NifRegante').value;
-    var pass = document.getElementById('PassRegante').value;
-    if (nif == '' || pass == '') {
-        alert("Indique el usuario y la contraseña de administración");
-        return null;
-    }
-    return { NifRegante: nif, PassRegante: pass };
-}
-
+// La identificación ahora es por sesión (login de administrador); ya no se piden
+// credenciales en cada acción.
 function ConfirmarEliminacion(idVersion,nivel) {
-    var credenciales = LeerCredenciales();
-    if (credenciales == null)
-        return;
     var result = confirm("Está seguro de eliminar la versión: " + idVersion + " nivel: "+ nivel);
     if (result) {
         var paramJson = { idVersion ,nivel};
         callAction("/importacion/EliminarMapas/", {
-            paramJson: paramJson,
-            NifRegante: credenciales.NifRegante,
-            PassRegante: credenciales.PassRegante
+            paramJson: paramJson
         }, function (res) {
             location.reload();
         });
@@ -31,9 +17,6 @@ function ConfirmarEliminacion(idVersion,nivel) {
 
 function BtnImportar() {
     event.preventDefault();
-    var credenciales = LeerCredenciales();
-    if (credenciales == null)
-        return;
     var formdata = new FormData(); //FormData object
     var file = document.getElementById('formFileMapa');
     if (file.files.length != 1) {
@@ -41,8 +24,6 @@ function BtnImportar() {
         return;
     }
     formdata.append(file.files[0].name, file.files[0]);
-    formdata.append("NifRegante", credenciales.NifRegante);
-    formdata.append("PassRegante", credenciales.PassRegante);
 
     var idVersion = document.getElementById('formIdVersion').value;
     if (idVersion == '') {

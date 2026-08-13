@@ -1,0 +1,43 @@
+@model List<Models.DatosEstadoHidrico>
+@{
+    ViewBag.Title = "Mis unidades de cultivo";
+    bool esGestor = ViewBag.EsGestor == true;
+}
+
+<div class="oa-cabecera" style="background:#0d6efd;color:#fff;border-radius:.5rem;padding:1.25rem 2rem;margin-bottom:1.25rem">
+    <h1 class="m-0" style="font-size:1.7rem">@(esGestor ? "Unidades de cultivo de mis representados" : "Mis unidades de cultivo")</h1>
+    <p class="m-0" style="opacity:.9">Temporada @ViewBag.IdTemporada · consulta</p>
+</div>
+
+@if (ViewBag.Error != null) { <div class="alert alert-danger">@ViewBag.Error</div> }
+
+@if (Model.Count == 0) {
+    <div class="alert alert-info">No hay unidades de cultivo asociadas para la temporada activa.</div>
+} else {
+    <table class="table table-hover align-middle">
+        <thead><tr><th>Unidad</th>@if (esGestor) { <th>Regante</th> }<th>Cultivo</th><th>Municipio</th><th>Superficie (m²)</th><th>Riego (mm)</th><th>Estado hídrico</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var d in Model) {
+            var err = d.Status != null && d.Status.StartsWith("ERROR");
+            <tr class="@(err ? "table-danger" : "")">
+                <td><b>@d.IdUnidadCultivo</b></td>
+                @if (esGestor) { <td>@d.Regante</td> }
+                <td>@d.Cultivo</td>
+                <td>@d.Municipios</td>
+                <td>@(d.SuperficieM2?.ToString("N0"))</td>
+                <td>@(d.SumaRiego?.ToString("N1"))</td>
+                <td>
+                    @if (err) {
+                        <span class="text-danger" title="@d.Status">no disponible</span>
+                    } else {
+                        <span class="badge" style="background:@(string.IsNullOrEmpty(d.ColorEstres) ? "#6c757d" : d.ColorEstres)">@d.IndiceEstres.ToString("N2")</span>
+                        <small class="text-muted ms-1">@d.DescripcionEstres</small>
+                    }
+                </td>
+                <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="/api/DatosHidricos/@d.IdUnidadCultivo/@(d.Fecha.ToString("yyyy-MM-dd"))" target="_blank">Detalle</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p class="text-muted"><small>@Model.Count unidad(es). Vista de sólo consulta.</small></p>
+}

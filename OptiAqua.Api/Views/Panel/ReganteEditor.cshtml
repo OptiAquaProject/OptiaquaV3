@@ -27,11 +27,7 @@
     </div>
 
     <hr class="my-4" />
-    <p class="text-muted">Guardar requiere credenciales de administrador. @(nuevo ? "Al crear un regante se genera su contraseña por defecto (Pass+Id)." : "La contraseña del regante NO se modifica al editar la ficha.")</p>
-    <div class="row g-2 mb-3">
-        <div class="col-auto"><input name="adminNif" class="form-control" placeholder="Usuario admin"></div>
-        <div class="col-auto"><input name="adminPass" type="password" class="form-control" placeholder="Contraseña"></div>
-    </div>
+    <p class="text-muted">@(nuevo ? "Al crear un regante se genera su contraseña por defecto (Pass+Id)." : "La contraseña del regante NO se modifica al editar la ficha.")</p>
     <button class="btn btn-success">Guardar</button>
     <a class="btn btn-outline-secondary" asp-action="Regantes">Cancelar</a>
 </form>

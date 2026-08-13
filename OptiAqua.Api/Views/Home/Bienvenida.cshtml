@@ -1,0 +1,30 @@
+@{ ViewBag.Title = "OptiAqua"; }
+
+<div class="oa-cabecera" style="background:#0d6efd;color:#fff;border-radius:.5rem;padding:1.5rem 2rem;margin-bottom:1.5rem">
+    <h1 class="m-0" style="font-size:2rem">OptiAqua</h1>
+    <p class="m-0" style="opacity:.9">Aplicación para la optimización del regadío</p>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <h3>Bienvenido</h3>
+        <p class="lead">Optimización del riego a partir del balance hídrico del suelo y los datos climáticos del SIAR de La Rioja.</p>
+        <p>Identifícate con tu usuario (NIF) y contraseña para consultar el estado hídrico de tus unidades de cultivo.</p>
+        <ul>
+            <li><b>Regante:</b> consulta el estado de tus parcelas y la recomendación de riego.</li>
+            <li><b>Gestor:</b> consulta las parcelas de los regantes que representas.</li>
+            <li><b>Administrador:</b> acceso al cuadro de mando y a la gestión.</li>
+        </ul>
+        <hr />
+        <p class="text-muted"><small>Más información: <a href="http://www.aimcra.es" target="_blank">AIMCRA</a> ·
+            <a href="http://www.larioja.org/agricultura/es/informacion-agroclimatica" target="_blank">Estaciones climáticas de La Rioja</a></small></p>
+    </div>
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Identificación</h5>
+                <partial name="_LoginForm" />
+            </div>
+        </div>
+    </div>
+</div>
