@@ -25,6 +25,8 @@ namespace DatosOptiaqua {
         public bool BaseDatosOperativa { get; set; }
         public string ErrorBaseDatos { get; set; }
         public string TemporadaActiva { get; set; }
+        /// <summary>Si la tabla ApiKey ya está instalada (para ofrecer o no la acción de crearla).</summary>
+        public bool TablaApiKeyExiste { get; set; }
         /// <summary>Progreso del recálculo, que puede durar mucho.</summary>
         public EstadoRecalculo Recalculo { get; set; }
         public List<Indicador> Indicadores { get; } = new List<Indicador>();
@@ -137,11 +139,12 @@ namespace DatosOptiaqua {
                 try {
                     bool existe = (db.SingleOrDefault<int?>(
                         "SELECT COUNT(*) FROM sys.tables WHERE name='ApiKey'") ?? 0) > 0;
+                    panel.TablaApiKeyExiste = existe;
                     if (!existe) {
                         panel.Indicadores.Add(new Indicador {
                             Titulo = "Claves de API",
                             Valor = "Sin instalar",
-                            Detalle = "Falta ejecutar sql/2026-08-12-apikey.sql",
+                            Detalle = "Pulsa para crear la tabla",
                             Estado = "aviso"
                         });
                     } else {

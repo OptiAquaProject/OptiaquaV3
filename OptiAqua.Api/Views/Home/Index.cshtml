@@ -72,23 +72,39 @@
 }
 
 @{
-    // Cada tarjeta enlaza a su página del panel según el título.
+    // Tarjetas que NAVEGAN a una página del panel.
     var enlaces = new Dictionary<string, string> {
         ["Temporadas"] = Url.Action("Temporadas", "Panel"),
         ["Unidades de cultivo"] = Url.Action("UnidadesCultivo", "Panel"),
         ["Regantes"] = Url.Action("Regantes", "Panel"),
         ["Parcelas"] = Url.Action("Parcelas", "Panel"),
         ["Mapas de suelo"] = Url.Action("ImportacionMapas", "Importacion"),
-        ["Claves de API"] = "/swagger/index.html#/ApiKeys",
     };
+    // Tarjetas que LANZAN una acción (POST) desde la propia casilla: título -> acción del panel.
+    var acciones = new Dictionary<string, string> {
+        ["Datos climáticos (SIAR)"] = "RefrescarSiar",
+        ["Recálculo"] = "RecalculoTotal",
+    };
+    // La tabla de claves de API: si ya existe, enlaza a Swagger; si no, ofrece crearla.
+    if (Model.TablaApiKeyExiste) enlaces["Claves de API"] = "/swagger/index.html";
+    else acciones["Claves de API"] = "EjecutarApiKeySql";
+
+    var estiloBoton = "width:100%;text-align:left;font:inherit;background:#fff;cursor:pointer";
 }
 @if (Model.Indicadores.Count > 0) {
     <div class="row g-3">
         @foreach (var indicador in Model.Indicadores) {
-            var url = enlaces.ContainsKey(indicador.Titulo) ? enlaces[indicador.Titulo] : null;
             <div class="col-md-4 col-lg-3">
-                @if (url != null) {
-                    <a href="@url" class="text-decoration-none">
+                @if (acciones.ContainsKey(indicador.Titulo)) {
+                    <form method="post" asp-controller="Panel" asp-action="@acciones[indicador.Titulo]" class="m-0">
+                        <button type="submit" class="oa-tarjeta oa-@indicador.Estado" style="@estiloBoton">
+                            <div class="oa-titulo">@indicador.Titulo &#8635;</div>
+                            <div class="oa-valor">@indicador.Valor</div>
+                            <div class="oa-detalle">@indicador.Detalle</div>
+                        </button>
+                    </form>
+                } else if (enlaces.ContainsKey(indicador.Titulo)) {
+                    <a href="@enlaces[indicador.Titulo]" class="text-decoration-none">
                         <div class="oa-tarjeta oa-@indicador.Estado" style="cursor:pointer">
                             <div class="oa-titulo">@indicador.Titulo &raquo;</div>
                             <div class="oa-valor">@indicador.Valor</div>
@@ -106,20 +122,8 @@
         }
     </div>
 
-    <p class="text-muted mt-2"><small>Datos a @Model.Generado.ToString("dd/MM/yyyy HH:mm:ss")</small></p>
+    <p class="text-muted mt-2"><small>Datos a @Model.Generado.ToString("dd/MM/yyyy HH:mm:ss") · las casillas de SIAR y Recálculo lanzan la acción; el resto abren su listado.</small></p>
 }
-
-@* ===== Acciones de administración ===== *@
-<div class="card border-secondary mt-3">
-    <div class="card-body">
-        <h5 class="card-title">Acciones de administración</h5>
-        <form method="post">
-            <button class="btn btn-sm btn-warning" formaction="@Url.Action("RecalculoTotal", "Panel")">Recálculo total</button>
-            <button class="btn btn-sm btn-outline-primary" formaction="@Url.Action("RefrescarSiar", "Panel")">Actualizar datos del SIAR</button>
-            <button class="btn btn-sm btn-outline-success" formaction="@Url.Action("EjecutarApiKeySql", "Panel")">Crear tabla de claves de API (ejecutar SQL)</button>
-        </form>
-    </div>
-</div>
 
 @if (Model.UltimosEventos.Count > 0) {
     <h4 class="mt-4">Últimos eventos registrados
