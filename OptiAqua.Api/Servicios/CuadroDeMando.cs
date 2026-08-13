@@ -150,12 +150,17 @@ namespace DatosOptiaqua {
                         });
                     } else {
                         int filas = db.SingleOrDefault<int?>("SELECT COUNT(*) FROM EstadoHidricoUC") ?? 0;
-                        var ultimo = db.SingleOrDefault<DateTime?>("SELECT MAX(FechaCalculo) FROM EstadoHidricoUC");
+                        // Al día = la fila vale para el día que pediría hoy la pantalla. Las
+                        // demás se rehacen solas al consultarlas, o en la pasada nocturna.
+                        int alDia = db.SingleOrDefault<int?>(
+                            "SELECT COUNT(*) FROM EstadoHidricoUC e JOIN Temporada t ON t.IdTemporada=e.IdTemporada" +
+                            " WHERE e.FechaPedida = CASE WHEN t.FechaFinal < CAST(GETDATE() AS date)" +
+                            "                           THEN t.FechaFinal ELSE CAST(GETDATE() AS date) END") ?? 0;
                         panel.Indicadores.Add(new Indicador {
                             Titulo = "Estado hídrico guardado",
-                            Valor = filas.ToString("N0"),
-                            Detalle = ultimo == null ? "Unidades de cultivo al día" : "Último, " + ultimo.Value.ToString("dd/MM/yyyy HH:mm"),
-                            Estado = filas > 0 ? "ok" : "aviso"
+                            Valor = alDia.ToString("N0"),
+                            Detalle = filas == alDia ? "Unidades de cultivo al día" : "al día, de " + filas.ToString("N0") + " guardadas",
+                            Estado = filas > 0 && alDia == filas ? "ok" : "aviso"
                         });
                     }
                 } catch (Exception ex) {

@@ -108,10 +108,17 @@
         /// </summary>
         /// <param name="idUnidadCultivo">Unidad de cultivo.</param>
         /// <param name="idTemporada">Temporada.</param>
+        /// <param name="fechaPedida">
+        /// El día para el que vale la fila: el que ha pedido la pantalla. NO es
+        /// datos.Fecha, que es el último día que alcanza el balance y casi nunca coincide
+        /// —el balance termina ayer y, si el cultivo cerró su ciclo, mucho antes—. Buscar
+        /// por la fecha del estado en vez de por la pedida hacía que la tabla no acertara
+        /// casi nunca: 250 aciertos de 1.262 filas, medido.
+        /// </param>
         /// <param name="datos">El estado hídrico ya montado.</param>
         /// <param name="huella">SHA-256 de las entradas estructurales, para la pasada de control.</param>
         /// <param name="versionAlgoritmo">Versión del cálculo con la que se ha obtenido.</param>
-        internal static void EstadoHidricoGuardar(string idUnidadCultivo, string idTemporada,
+        internal static void EstadoHidricoGuardar(string idUnidadCultivo, string idTemporada, DateTime fechaPedida,
                                                   DatosEstadoHidrico datos, string huella, int versionAlgoritmo) {
             if (!EstadoHidricoTablaExiste() || datos == null)
                 return;
@@ -120,9 +127,9 @@
                     db.Execute("DELETE FROM EstadoHidricoUC WHERE IdTemporada=@0 AND IdUnidadCultivo=@1",
                                idTemporada, idUnidadCultivo);
                     db.Execute("INSERT INTO EstadoHidricoUC" +
-                               " (IdTemporada, IdUnidadCultivo, Fecha, Datos, HashEntradas, VersionAlgoritmo, FechaCalculo)" +
-                               " VALUES (@0, @1, @2, @3, @4, @5, @6)",
-                               idTemporada, idUnidadCultivo, datos.Fecha.Date,
+                               " (IdTemporada, IdUnidadCultivo, FechaPedida, FechaEstado, Datos, HashEntradas, VersionAlgoritmo, FechaCalculo)" +
+                               " VALUES (@0, @1, @2, @3, @4, @5, @6, @7)",
+                               idTemporada, idUnidadCultivo, fechaPedida.Date, datos.Fecha.Date,
                                EstadoHidricoMaterializado.ASerializado(datos), huella, versionAlgoritmo, DateTime.Now);
                 }
             } catch (Exception ex) {
@@ -135,7 +142,7 @@
         /// </summary>
         /// <param name="idUnidadCultivo">Unidad de cultivo.</param>
         /// <param name="idTemporada">Temporada.</param>
-        /// <param name="fecha">Día pedido. La fila solo vale para su mismo día.</param>
+        /// <param name="fecha">Día pedido; se compara con FechaPedida, no con FechaEstado.</param>
         /// <param name="versionAlgoritmo">Versión de cálculo que se espera.</param>
         /// <returns>El estado hídrico, o null si no hay fila válida.</returns>
         internal static DatosEstadoHidrico EstadoHidricoLeer(string idUnidadCultivo, string idTemporada,
@@ -146,7 +153,7 @@
                 using (var db = Conexion.Nueva()) {
                     string json = db.SingleOrDefault<string>(
                         "SELECT Datos FROM EstadoHidricoUC" +
-                        " WHERE IdTemporada=@0 AND IdUnidadCultivo=@1 AND Fecha=@2 AND VersionAlgoritmo=@3",
+                        " WHERE IdTemporada=@0 AND IdUnidadCultivo=@1 AND FechaPedida=@2 AND VersionAlgoritmo=@3",
                         idTemporada, idUnidadCultivo, fecha.Date, versionAlgoritmo);
                     return EstadoHidricoMaterializado.DeSerializado(json);
                 }
@@ -174,7 +181,7 @@
                 using (var db = Conexion.Nueva())
                     foreach (var f in db.Fetch<dynamic>(
                             "SELECT IdUnidadCultivo, Datos FROM EstadoHidricoUC" +
-                            " WHERE IdTemporada=@0 AND Fecha=@1 AND VersionAlgoritmo=@2",
+                            " WHERE IdTemporada=@0 AND FechaPedida=@1 AND VersionAlgoritmo=@2",
                             idTemporada, fecha.Date, versionAlgoritmo)) {
                         var datos = EstadoHidricoMaterializado.DeSerializado(f.Datos as string);
                         if (datos != null)

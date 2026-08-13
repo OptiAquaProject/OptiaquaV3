@@ -61,7 +61,11 @@
             if (bh == null)
                 return null;
             DatosEstadoHidrico ret = bh.DatosEstadoHidrico(fecha);
-            DB.EstadoHidricoGuardar(idUnidadCultivo, idTemporada, ret, Huella(bh.unidadCultivoDatosHidricos), VersionAlgoritmo);
+            // Se guarda bajo la fecha PEDIDA, no bajo ret.Fecha: el balance termina ayer y,
+            // si el cultivo ya cerró su ciclo, mucho antes, así que las dos casi nunca
+            // coinciden. Guardar por ret.Fecha dejaba la tabla sin acertar (250 de 1.262).
+            DB.EstadoHidricoGuardar(idUnidadCultivo, idTemporada, fecha.Date, ret,
+                                    Huella(bh.unidadCultivoDatosHidricos), VersionAlgoritmo);
             return ret;
         }
 

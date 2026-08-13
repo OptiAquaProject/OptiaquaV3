@@ -19,6 +19,14 @@
 -- la invalida (riegos, clima, datos extra, o un cambio estructural). La
 -- invalidación BORRA la fila; no hay estado intermedio que interpretar.
 --
+-- OJO CON LAS DOS FECHAS, que no son la misma y confundirlas deja la tabla sin
+-- acertar nunca:
+--   FechaPedida — el día que pide la pantalla (hoy, o el fin de la temporada si
+--                 ya pasó). Es lo que se busca: la fila vale para ESE día.
+--   FechaEstado — el último día que alcanza el balance, que casi nunca coincide:
+--                 el balance termina AYER y, si el cultivo ya cerró su ciclo,
+--                 mucho antes. Se guarda para poder verlo, no para buscar.
+--
 -- HashEntradas no se comprueba al leer —costaría lo mismo que recalcular—: lo
 -- escribe el cálculo, que ya tiene los datos delante, y lo compara la pasada
 -- nocturna para cazar lo que se haya modificado sin avisar por ningún camino.
@@ -29,7 +37,8 @@ BEGIN
     CREATE TABLE dbo.EstadoHidricoUC (
         IdTemporada      NVARCHAR(20)   NOT NULL,
         IdUnidadCultivo  NVARCHAR(20)   NOT NULL,
-        Fecha            DATE           NOT NULL,   -- el día al que se refiere el estado
+        FechaPedida      DATE           NOT NULL,   -- el día para el que vale la fila
+        FechaEstado      DATE           NOT NULL,   -- el último día que alcanza el balance
         Datos            NVARCHAR(MAX)  NOT NULL,   -- el DatosEstadoHidrico serializado en JSON
         HashEntradas     CHAR(64)       NULL,       -- SHA-256 en hexadecimal de las entradas
         VersionAlgoritmo INT            NOT NULL,
