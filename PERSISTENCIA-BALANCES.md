@@ -40,6 +40,41 @@ razones que sí son reales:
 3. **Es por proceso.** Dos instancias = dos cachés que no se hablan, y un recálculo
    lanzado en una no lo ve la otra (ya documentado como *gotcha*).
 
+### 1.1 Segunda medición, y esta tumba la fase 1 tal como estaba planteada
+
+Al ir a implementarlo medí el reparto del coste y qué necesita cada salida:
+
+| | medido, por unidad de cultivo |
+|---|---|
+| Cargar `UnidadCultivoDatosHidricos` | **7,68 ms** |
+| Calcular el balance (~344 días) | **5,13 ms** |
+| `DatosEstadoHidrico(fecha)` a partir del balance | 1,98 ms |
+| `ResumenDiario(fecha)` a partir del balance | 1,23 ms |
+| Serializar la serie a JSON | 8,7 ms (1,3 MB; 35 KB comprimida) |
+
+Y el detalle que lo cambia todo: **`DatosEstadoHidrico` y `ResumenDiario` leen de
+`unidadCultivoDatosHidricos`**, no del balance —alias, cultivo, regante, NIF,
+teléfonos, superficie, pluviometría, tipo de riego, estación, municipio y paraje,
+textura, profundidades de raíz, alturas de etapa—. Son las dos salidas que usan la
+app, el panel y MiZona.
+
+O sea: **servir un balance de disco sigue exigiendo cargar `dh`**. Los 7,68 ms se
+pagan igual. Persistir las líneas ahorraría como mucho los 5,13 ms del cálculo…
+pero leerlas y deserializarlas cuesta del orden de 9 ms. **Persistir la serie sale
+más lento que recalcularla.**
+
+Queda en pie el argumento de la memoria, y para eso hay una respuesta mucho más
+barata que una tabla: **acotar la caché**. Implementado: tope de 300 balances y
+descarte por uso más antiguo, y el recálculo nocturno deja de retenerlos. Medido
+pidiendo los 1.264 balances seguidos: **288 memorizados y 35 MB de proceso, frente
+a los 211 MB de antes**. Con un fallo de caché a 13 ms, no se nota.
+
+**Lo que sigue teniendo sentido persistir no es la serie, es la respuesta.** Si lo
+que se guarda es el `DatosEstadoHidrico` del último día de cada unidad de cultivo
+—1.264 filas—, la pantalla que abre un regante y el panel pasan a ser una lectura
+indexada: ni `dh`, ni líneas, ni cálculo. Eso sí gana, y mucho. La serie completa
+(`/api/balancehidrico`) seguiría calculándose a demanda, que es una petición rara.
+
 Y hay un precedente en el propio proyecto que conviene copiar: la tabla
 **`SueloUnidadCultivoTemporada`** ya es exactamente esto —el resultado caro
 (`UnidadCultivoSueloListNew`, con su consulta espacial) materializado en una tabla
@@ -235,22 +270,29 @@ conexión.
 
 ## 6. Por dónde empezar
 
-**Fase 1 — persistir y hash estructural.** `BalanceDia` + `BalanceEstado`, el hash,
-y al invalidar **recalcular la unidad de cultivo entera** (10,8 ms). Sin marcas por
-fecha todavía. Esto ya resuelve los tres problemas reales: la RAM, el arranque en
-frío y el estado compartido entre procesos. Es la fase que más da por lo que cuesta.
+**Hecho ya, y era lo urgente**: el suelo del mapa vuelve a calcularse (faltaba
+enumerar las columnas de `ParcelasDeUC` para no traer la geometría), el SIAR solo
+escribe lo que de verdad cambia, y la caché de balances está acotada a 300 con
+descarte por uso —de 211 MB a 35 MB—.
 
-**Fase 2 — el día que avanza.** `UltimoDiaCalculado` y extender un día. Con el
-requisito previo de que el guardado del SIAR compare antes de escribir (§4.3).
+**Lo siguiente, y sustituye a la fase 1 original: persistir la respuesta, no la
+serie.** Una tabla `EstadoHidricoUC` con una fila por unidad de cultivo: el
+`DatosEstadoHidrico` del último día calculado, más el hash de §4.2 y la fecha. La
+pantalla de un regante y el panel pasan de 15 ms por unidad a una lectura indexada.
+Se rellena al vuelo y en el recálculo nocturno, y se invalida con el hash y con las
+marcas de §4.3.
 
-**Fase 3 — reanudar dentro de la temporada.** `PrimerDiaSucio` y la reanudación por
-etapa (§3). **Solo cuando el volumen lo pida**: con 1.264 unidades de cultivo ahorra
-9 ms por unidad y añade la parte más delicada del diseño. Con 8.000 la cosa cambia.
+**Después — el día que avanza.** `UltimoDiaCalculado` y extender un día en vez de
+recalcular la temporada. Ya está el requisito previo: el SIAR compara antes de
+escribir, así que una fecha marcada como sucia lo está de verdad.
 
-Y antes que todo esto, si el objetivo es que "el recálculo total" deje de ser largo,
-lo que hay que mirar es `RecalculaSuelos` y la descarga del SIAR, que es donde está
-el tiempo. Empezando por arreglar `Microsoft.SqlServer.Types`, porque hoy la mitad
-de los suelos que salen del mapa ni siquiera se calculan.
+**Solo si el volumen lo pide — reanudar dentro de la temporada.** `PrimerDiaSucio` y
+la reanudación por etapa (§3). Con 1.264 unidades ahorra 5 ms por unidad y añade la
+parte más delicada del diseño. Con 8.000, y sobre todo si la serie completa pasa a
+consultarse a menudo, cambia la cuenta.
+
+Y persistir la serie día a día (`BalanceDia`) solo tiene sentido si aparece un
+consumidor que la pida a menudo, o para la reanudación por etapa. Hoy no lo hay.
 
 ---
 

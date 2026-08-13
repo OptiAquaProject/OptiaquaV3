@@ -20,6 +20,13 @@
         /// Gets or sets the Balance.
         /// </summary>
         public BalanceHidrico Balance { set; get; }
+
+        /// <summary>
+        /// Momento del último uso. Es lo que decide a quién se descarta cuando la caché llega
+        /// al tope; sin esto no había forma de elegir, porque Fecha es el día de cálculo y
+        /// después de un recálculo total la tienen todas igual.
+        /// </summary>
+        public DateTime UltimoUso { set; get; }
     }
 
     /// <summary>
@@ -61,6 +68,16 @@
         private const int MaximoRespuestas = 5000;
 
         /// <summary>
+        /// Tope de balances memorizados, sumando todas las temporadas.
+        ///
+        /// Un balance completo ocupa del orden de 170 KB: guardar los 1.264 que hay hoy son
+        /// 211 MB medidos, y con una temporada configurada del todo (unas 8.000 unidades de
+        /// cultivo) pasarían de 1 GB. No compensa: recalcular uno cuesta unos 13 ms, así que
+        /// un fallo de caché es imperceptible y la memoria deja de crecer sin control.
+        /// </summary>
+        private const int MaximoBalances = 300;
+
+        /// <summary>
         /// The Balance.
         /// </summary>
         public static BalanceHidrico Balance(string idUC, DateTime fecha) {
@@ -75,7 +92,32 @@
                 return null;
             if (fecha > cacheUnidadCultivo.Fecha)
                 return null;
+            cacheUnidadCultivo.UltimoUso = DateTime.UtcNow;
             return cacheUnidadCultivo.Balance;
+        }
+
+        /// <summary>Balances memorizados ahora mismo, sumando todas las temporadas.</summary>
+        internal static int BalancesMemorizados() {
+            return lCacheBalances.Values.Sum(x => x.Count);
+        }
+
+        /// <summary>
+        /// Deja la caché de balances por debajo del tope descartando los de uso más antiguo.
+        /// Se quita un 20% de más para no volver a entrar aquí en la siguiente petición.
+        /// </summary>
+        private static void DescartaBalancesMasAntiguos() {
+            int sobran = BalancesMemorizados() - MaximoBalances + MaximoBalances / 5;
+            if (sobran <= 0)
+                return;
+            var candidatos = lCacheBalances
+                .SelectMany(t => t.Value.Select(uc => new { Temporada = t.Key, Uc = uc.Key, uc.Value.UltimoUso }))
+                .OrderBy(x => x.UltimoUso)
+                .Take(sobran)
+                .ToList();
+            foreach (var c in candidatos)
+                if (lCacheBalances.TryGetValue(c.Temporada, out var cacheTemporada))
+                    cacheTemporada.TryRemove(c.Uc, out _);
+            Log.Info($"Caché de balances: descartados {candidatos.Count} de uso más antiguo; quedan {BalancesMemorizados()}");
         }
 
         /// <summary>
@@ -136,13 +178,16 @@
                             fechaCalculo = temporada.FechaFinal;
                         else
                             fechaCalculo = dateUpdate;
-                        var cacheTemporada = lCacheBalances.GetOrAdd(idTemporada, _ => new ConcurrentDictionary<string, CacheUnidadCultivo>());
                         List<string> lIdUnidadCultivo = db.Fetch<string>("SELECT DISTINCT IdUnidadCultivo from UnidadCultivoCultivo WHERE IdTemporada=@0", idTemporada);
                         foreach (string idUC in lIdUnidadCultivo) {
                             try {
-                                BalanceHidrico bh = BalanceHidrico.Balance(idUC, fechaCalculo, true, false);
-                                if (bh != null)
-                                    cacheTemporada[idUC] = new CacheUnidadCultivo { Fecha = dateUpdate, Balance = bh };
+                                // El balance se calcula pero NO se memoriza. Antes esta pasada
+                                // dejaba en memoria los 1.264 balances (211 MB medidos, y más de
+                                // 1 GB con una temporada configurada del todo) para ahorrar unos
+                                // 13 ms por unidad de cultivo. Lo que sí hace falta de esta pasada
+                                // es actualizar las fechas de etapa y sacar a la luz las unidades
+                                // que no calculan; la caché se llena sola con lo que se consulte.
+                                BalanceHidrico.Balance(idUC, fechaCalculo, true, false);
                             } catch (Exception ex) {
                                 // Antes se asignaba el mensaje a una variable que nadie leía: el
                                 // fallo de una unidad de cultivo desaparecía sin rastro.
@@ -327,7 +372,9 @@
             if (idTemporada == null)
                 return;
             var cacheTemporada = lCacheBalances.GetOrAdd(idTemporada, _ => new ConcurrentDictionary<string, CacheUnidadCultivo>());
-            cacheTemporada[idUC] = new CacheUnidadCultivo { Fecha = fecha, Balance = bh };
+            cacheTemporada[idUC] = new CacheUnidadCultivo { Fecha = fecha, Balance = bh, UltimoUso = DateTime.UtcNow };
+            if (BalancesMemorizados() > MaximoBalances)
+                DescartaBalancesMasAntiguos();
         }
     }
 }
