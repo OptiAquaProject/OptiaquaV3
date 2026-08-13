@@ -163,7 +163,8 @@ namespace WebApi {
         public IActionResult RecalculoTotal() {
             if (CacheDatosHidricos.Recalculando) { TempData["error"] = "Ya hay un recálculo en curso."; return RedirectToAction("Index", "Home"); }
             // Se lanza en el propio proceso web para que el panel de progreso lo muestre.
-            Task.Run(() => { try { CacheDatosHidricos.RecreateAll(); } catch (Exception ex) { Log.Error("Panel/RecalculoTotal", ex); } });
+            // El mismo trabajo que hace el planificador a las 9:00: clima, suelos y estados.
+            Task.Run(() => { try { CacheDatosHidricos.PasadaDiaria(); } catch (Exception ex) { Log.Error("Panel/RecalculoTotal", ex); } });
             TempData["ok"] = "Recálculo total lanzado. Sigue el progreso en el cuadro de mando.";
             return RedirectToAction("Index", "Home");
         }

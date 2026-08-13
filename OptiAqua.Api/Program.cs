@@ -150,14 +150,24 @@ try {
         });
     });
 
-    // Recálculo diario a las 8:00, antes en Quartz arrancado a mano desde Application_Start.
+    // UNA sola tarea diaria, a las 9:00: clima del SIAR, suelos y estado hídrico, en ese
+    // orden. Antes había una tarea que solo rehacía balances y los suelos se lanzaban a mano
+    // desde el panel; como el balance lee el suelo y el clima, hacerlo en tres momentos
+    // distintos dejaba resultados de ayer con fecha de hoy. La hora se puede cambiar con
+    // Tareas:CronRecalculo (formato cron de Quartz, con segundos delante).
+    // La ZONA HORARIA va fijada a propósito. Sin ella Quartz usa la del servidor, y un VPS
+    // Linux normalmente va en UTC: "las 9:00" acabarían siendo las 11:00 de aquí en verano y
+    // las 10:00 en invierno, moviéndose solas dos veces al año. La aplicación es de riego en
+    // La Rioja; la hora que importa es la de aquí, no la de la máquina.
+    var zonaTareas = ZonaHoraria(config["Tareas:ZonaHoraria"] ?? "Europe/Madrid");
     builder.Services.AddQuartz(q => {
         var clave = new JobKey("RecalculoDiario");
         q.AddJob<TareaRecalculoDiario>(opciones => opciones.WithIdentity(clave));
         q.AddTrigger(opciones => opciones
             .ForJob(clave)
             .WithIdentity("RecalculoDiario-disparador")
-            .WithCronSchedule(config["Tareas:CronRecalculo"] ?? "0 0 8 * * ?"));
+            .WithCronSchedule(config["Tareas:CronRecalculo"] ?? "0 0 9 * * ?",
+                              x => x.InTimeZone(zonaTareas)));
     });
     builder.Services.AddQuartzHostedService(opciones => opciones.WaitForJobsToComplete = true);
 
@@ -195,4 +205,23 @@ try {
     throw;
 } finally {
     Log.CloseAndFlush();
+}
+
+/// <summary>
+/// Zona horaria para las tareas programadas. Se admite tanto el identificador IANA
+/// ("Europe/Madrid") como el de Windows ("Romance Standard Time"): .NET convierte entre
+/// ambos, pero no en todas las máquinas, así que se prueban los dos antes de rendirse.
+/// Si ninguno existe se usa la del servidor y se avisa: la aplicación tiene que arrancar.
+/// </summary>
+static TimeZoneInfo ZonaHoraria(string id) {
+    foreach (var candidato in new[] { id, "Europe/Madrid", "Romance Standard Time" }) {
+        try {
+            return TimeZoneInfo.FindSystemTimeZoneById(candidato);
+        } catch (Exception) {
+            // se prueba el siguiente
+        }
+    }
+    Log.Warning("No se encontró la zona horaria '{Zona}'; las tareas usarán la del servidor ({Local})",
+                id, TimeZoneInfo.Local.Id);
+    return TimeZoneInfo.Local;
 }

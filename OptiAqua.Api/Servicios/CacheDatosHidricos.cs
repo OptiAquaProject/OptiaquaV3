@@ -138,7 +138,40 @@
         }
 
         /// <summary>
-        /// The RecreateAll.
+        /// Pasada diaria completa: clima, suelos y estado hídrico, EN ESE ORDEN.
+        ///
+        /// El orden no es negociable y es la razón de que esto sea un solo método en vez de
+        /// tres tareas programadas: el balance lee el suelo de `SueloUnidadCultivoTemporada`
+        /// y el clima de `DatoClimatico`, así que calcularlo antes de refrescar cualquiera de
+        /// los dos deja el resultado de ayer con fecha de hoy.
+        ///
+        /// La lanza el planificador una vez al día y también el botón del cuadro de mando.
+        /// </summary>
+        /// <returns>Lo ocurrido, para poder enseñarlo en el panel.</returns>
+        public static string PasadaDiaria() {
+            if (Interlocked.CompareExchange(ref enRecalculo, 1, 0) == 1)
+                return "ya se está recalculando";
+            bool correcto = false;
+            ProgresoRecalculo.Comienza("Pasada diaria", 0);
+            var cronometro = System.Diagnostics.Stopwatch.StartNew();
+            try {
+                DB.InsertaEvento("Inicia la pasada diaria " + DateTime.Now.ToString());
+                RefrescaClima();
+                string suelos = RecalculaSuelosInterno();
+                RecalculaEstados();
+                correcto = true;
+                string resumen = $"Pasada diaria terminada en {cronometro.Elapsed.TotalSeconds:N0} s. Suelos: {suelos}";
+                DB.InsertaEvento(resumen);
+                return resumen;
+            } finally {
+                ProgresoRecalculo.Termina(correcto);
+                Volatile.Write(ref enRecalculo, 0);
+            }
+        }
+
+        /// <summary>
+        /// Recalcula el estado hídrico de todas las unidades de cultivo, sin tocar clima ni
+        /// suelos. Se conserva como entrada suelta porque el panel la ofrece por separado.
         /// </summary>
         public static bool RecreateAll() {
             // Comprobar-y-marcar en una sola operación atómica: con el bool anterior, dos hilos
@@ -150,14 +183,32 @@
             // durar mucho: se publica el progreso para poder seguirlo desde el cuadro de mando.
             ProgresoRecalculo.Comienza("Balances hídricos", 0);
             try {
+                RefrescaClima();
+                RecalculaEstados();
+                correcto = true;
+                return true;
+            } finally {
+                ProgresoRecalculo.Termina(correcto);
+                Volatile.Write(ref enRecalculo, 0);
+            }
+        }
+
+        /// <summary>Baja del SIAR lo que falte y tira lo memorizado.</summary>
+        private static void RefrescaClima() {
+            lCacheBalances.Clear();
+            lCacheRespuestas.Clear();
+            ProgresoRecalculo.CambiaFase("Descargando datos climáticos del SIAR");
+            DB.DatosClimaticosSiarForceRefresh();
+        }
+
+        /// <summary>
+        /// Recorre todas las unidades de cultivo de todas las temporadas reescribiendo su
+        /// estado hídrico materializado. NO toma el cerrojo: lo hace quien la llama.
+        /// </summary>
+        private static void RecalculaEstados() {
+            {
                 DateTime dateUpdate = DateTime.Now.Date;
                 DateTime fechaCalculo = DateTime.Now.Date;
-                lCacheBalances.Clear();
-                lCacheRespuestas.Clear();
-                DB.InsertaEvento("Inicia RecreateAll" + DateTime.Now.ToString());
-
-                ProgresoRecalculo.CambiaFase("Descargando datos climáticos del SIAR");
-                DB.DatosClimaticosSiarForceRefresh();
 
                 List<Models.Temporada> lTemporadas = DB.TemporadasList();
                 using (var db = Conexion.Nueva()) {
@@ -204,12 +255,6 @@
                         }
                     }
                 }
-                DB.InsertaEvento("Finaliza RecreateAll" + DateTime.Now.ToString());
-                correcto = true;
-                return true;
-            } finally {
-                ProgresoRecalculo.Termina(correcto);
-                Volatile.Write(ref enRecalculo, 0);
             }
         }
 
@@ -218,12 +263,31 @@
             lCacheRespuestas.Clear();
         }
 
+        /// <summary>
+        /// Recalcula los suelos por su cuenta. Lo ofrece el panel; la pasada diaria usa la
+        /// versión interna, que no vuelve a tomar el cerrojo.
+        /// </summary>
         static public string RecalculaSuelos() {
             if (Interlocked.CompareExchange(ref enRecalculo, 1, 0) == 1)
                 return "ya se está recalculando";
             bool correcto = false;
             ProgresoRecalculo.Comienza("Suelos por unidad de cultivo", 0);
             try {
+                string ret = RecalculaSuelosInterno();
+                correcto = ret == "OK";
+                return ret;
+            } finally {
+                ProgresoRecalculo.Termina(correcto);
+                Volatile.Write(ref enRecalculo, 0);
+            }
+        }
+
+        /// <summary>
+        /// El cálculo de suelos en sí. NO toma el cerrojo ni publica el fin del progreso: lo
+        /// hace quien la llama, que puede ser la pasada diaria encadenando tres fases.
+        /// </summary>
+        private static string RecalculaSuelosInterno() {
+            {
                 DB.InsertaEvento("Inicia recalculando suelos" + DateTime.Now.ToString());
                 var ret = new List<SueloUnidadCultivoTemporada>();
                 int unidadesFallidas = 0;
@@ -300,11 +364,7 @@
                     }
                 }
                 DB.InsertaEvento("Finaliza RecalculaSuelos" + DateTime.Now.ToString());
-                correcto = true;
                 return "OK";
-            } finally {
-                ProgresoRecalculo.Termina(correcto);
-                Volatile.Write(ref enRecalculo, 0);
             }
         }
 

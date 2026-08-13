@@ -129,7 +129,7 @@ namespace DatosOptiaqua {
                     Valor = panel.Recalculo.EnCurso ? panel.Recalculo.Porcentaje + " %" : "En reposo",
                     Detalle = panel.Recalculo.EnCurso
                         ? panel.Recalculo.Tarea + ", faltan " + panel.Recalculo.Restante
-                        : (panel.Recalculo.UltimaEjecucion ?? "Programado cada día a las 8:00"),
+                        : (panel.Recalculo.UltimaEjecucion ?? "Programado cada día a las 9:00"),
                     Estado = panel.Recalculo.EnCurso ? "aviso" : "ok"
                 });
 

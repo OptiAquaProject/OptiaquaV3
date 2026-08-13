@@ -4,7 +4,13 @@ using System.Diagnostics;
 
 namespace OptiAqua.Api.Infraestructura {
     /// <summary>
-    /// Recálculo diario de la caché de balances hídricos.
+    /// La pasada diaria: clima del SIAR, suelos y estado hídrico de todas las unidades de
+    /// cultivo, en ese orden y en un único momento del día (las 9:00 por defecto).
+    ///
+    /// El orden importa, y es la razón de que sea UNA tarea y no tres: el balance lee el suelo
+    /// de SueloUnidadCultivoTemporada y el clima de DatoClimatico, así que rehacerlo antes que
+    /// ellos deja el resultado de ayer con fecha de hoy. Antes esta tarea solo rehacía los
+    /// balances y los suelos había que lanzarlos a mano desde el panel.
     ///
     /// Antes se arrancaba a mano desde Application_Start con GetAwaiter().GetResult(); ahora lo
     /// gestiona el servicio alojado de Quartz, que respeta el ciclo de vida de la aplicación.
@@ -20,20 +26,17 @@ namespace OptiAqua.Api.Infraestructura {
 
         public Task Execute(IJobExecutionContext context) {
             var cronometro = Stopwatch.StartNew();
-            log.LogInformation("Comienza el recálculo diario de la caché de balances");
+            log.LogInformation("Comienza la pasada diaria: clima, suelos y estado hídrico");
             try {
-                DB.InsertaEvento("Execute at " + DateTime.Now.ToString());
+                string resultado = CacheDatosHidricos.PasadaDiaria();
+                log.LogInformation("Pasada diaria terminada en {Segundos:N0} s. {Resultado}",
+                                   cronometro.Elapsed.TotalSeconds, resultado);
             } catch (Exception ex) {
-                // No poder anotar el evento no debe impedir el recálculo.
-                log.LogWarning(ex, "No se pudo registrar el inicio del recálculo en la tabla de eventos");
-            }
-
-            try {
-                CacheDatosHidricos.RecreateAll();
-                log.LogInformation("Recálculo diario terminado en {Segundos:N0} s", cronometro.Elapsed.TotalSeconds);
-            } catch (Exception ex) {
-                // Se registra y se termina: que falle el recálculo no debe tumbar el planificador.
-                log.LogError(ex, "El recálculo diario falló tras {Segundos:N0} s", cronometro.Elapsed.TotalSeconds);
+                // Se registra y se termina: que falle la pasada no debe tumbar el planificador,
+                // que volverá a intentarlo mañana. Y la aplicación sigue sirviendo: lo que no se
+                // haya rehecho se recalcula solo al consultarlo.
+                log.LogError(ex, "La pasada diaria falló tras {Segundos:N0} s", cronometro.Elapsed.TotalSeconds);
+                try { DB.InsertaEvento("La pasada diaria falló: " + ex.Message); } catch { }
             }
             return Task.CompletedTask;
         }
