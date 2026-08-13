@@ -1,4 +1,4 @@
-namespace DatosOptiaqua {
+﻿namespace DatosOptiaqua {
     using NPoco;
     using System;
     using System.Collections.Generic;
