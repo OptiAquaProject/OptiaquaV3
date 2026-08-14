@@ -64,14 +64,14 @@
     <table class="table table-hover table-sm align-middle">
         <thead>
             <tr>
-                <th title="Incidencias del cálculo"><a class="oa-orden" href="@Cabecera("incidencias")">&#9888;@f.Flecha("incidencias")</a></th>
-                <th><a class="oa-orden" href="@Cabecera("unidad")">Unidad@f.Flecha("unidad")</a></th>
-                <th><a class="oa-orden" href="@Cabecera("regante")">Regante@f.Flecha("regante")</a></th>
-                <th><a class="oa-orden" href="@Cabecera("cultivo")">Cultivo@f.Flecha("cultivo")</a></th>
-                <th><a class="oa-orden" href="@Cabecera("municipio")">Municipio@f.Flecha("municipio")</a></th>
-                <th class="text-end"><a class="oa-orden" href="@Cabecera("superficie")">Superficie (m²)@f.Flecha("superficie")</a></th>
-                <th class="text-end"><a class="oa-orden" href="@Cabecera("riego")">Riego (mm)@f.Flecha("riego")</a></th>
-                <th style="min-width:320px"><a class="oa-orden" href="@Cabecera("estado")">Estado hídrico@f.Flecha("estado")</a></th>
+                <th title="Incidencias del cálculo"><a class="oa-orden @(f.Orden == "incidencias" ? "fw-bold" : "")" href="@Cabecera("incidencias")">&#9888;</a></th>
+                <th><a class="oa-orden @(f.Orden == "unidad" ? "fw-bold" : "")" href="@Cabecera("unidad")">Unidad</a></th>
+                <th><a class="oa-orden @(f.Orden == "regante" ? "fw-bold" : "")" href="@Cabecera("regante")">Regante</a></th>
+                <th><a class="oa-orden @(f.Orden == "cultivo" ? "fw-bold" : "")" href="@Cabecera("cultivo")">Cultivo</a></th>
+                <th><a class="oa-orden @(f.Orden == "municipio" ? "fw-bold" : "")" href="@Cabecera("municipio")">Municipio</a></th>
+                <th class="text-end"><a class="oa-orden @(f.Orden == "superficie" ? "fw-bold" : "")" href="@Cabecera("superficie")">Superficie (m²)</a></th>
+                <th class="text-end"><a class="oa-orden @(f.Orden == "riego" ? "fw-bold" : "")" href="@Cabecera("riego")">Riego (mm)</a></th>
+                <th style="min-width:320px"><a class="oa-orden @(f.Orden == "estado" ? "fw-bold" : "")" href="@Cabecera("estado")">Estado hídrico</a></th>
             </tr>
             <tr class="oa-filtros">
                 <th>

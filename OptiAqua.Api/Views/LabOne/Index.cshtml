@@ -1,0 +1,109 @@
+@using DatosOptiaqua
+@{
+    ViewBag.Title = "LAB-ONE";
+    var abierto = ViewBag.Abierto as LabOneEnsayo;
+    var guardados = ViewBag.Guardados as List<LabOneGuardado> ?? new List<LabOneGuardado>();
+    var temporadas = ViewBag.Temporadas as List<Models.Temporada> ?? new List<Models.Temporada>();
+    string activa = ViewBag.TemporadaActiva as string;
+}
+
+<h2 class="mb-1">LAB-ONE</h2>
+<p class="text-muted">
+    Laboratorio del balance hídrico: se copia una unidad de cultivo entera a memoria, se cambia
+    lo que se quiera —suelo, clima, etapas, riegos, superficie— y se vuelve a calcular.
+    <b>Nada de lo que se hace aquí se escribe en la base de datos.</b>
+</p>
+<partial name="_MensajesPanel" />
+
+@if (abierto != null) {
+    <div class="card border-primary mb-4">
+        <div class="card-body d-flex flex-wrap align-items-center gap-3">
+            <div class="flex-grow-1">
+                <div class="fw-bold">Ensayo abierto: @abierto.Nombre</div>
+                <small class="text-muted">
+                    @abierto.IdUnidadCultivo · temporada @abierto.IdTemporada ·
+                    @abierto.Etapas.Count etapas, @abierto.Suelo.Count horizontes,
+                    @abierto.Clima.Count días de clima, @abierto.Riegos.Count riegos ·
+                    modificado @abierto.Modificado.ToString("dd/MM/yyyy HH:mm")
+                </small>
+            </div>
+            <a class="btn btn-primary" asp-action="Ficha">Seguir con él</a>
+            <form method="post" asp-action="Cerrar" class="d-inline">
+                <button class="btn btn-outline-secondary"
+                        onclick="return confirm('Se cierra el ensayo. Lo que no esté guardado en disco se pierde.')">Cerrar</button>
+            </form>
+        </div>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">Empezar un ensayo nuevo</div>
+            <div class="card-body">
+                <form method="post" asp-action="Nuevo">
+                    <div class="mb-3">
+                        <label class="form-label">Unidad de cultivo</label>
+                        <input name="idUnidadCultivo" class="form-control" required
+                               placeholder="por ejemplo 155_V1" autofocus />
+                        <div class="form-text">
+                            El identificador tal y como sale en la lista de unidades de cultivo.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Temporada</label>
+                        <select name="idTemporada" class="form-select">
+                            @foreach (var t in temporadas) {
+                                <option value="@t.IdTemporada" selected="@(t.IdTemporada == activa)">
+                                    @t.IdTemporada@(t.IdTemporada == activa ? " (activa)" : "")
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <button class="btn btn-primary">Cargar los datos</button>
+                    @if (abierto != null) {
+                        <div class="form-text text-warning-emphasis mt-2">
+                            Cargar otro ensayo sustituye al que hay abierto.
+                        </div>
+                    }
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header">Ensayos guardados en disco</div>
+            <div class="card-body">
+                @if (guardados.Count == 0) {
+                    <p class="text-muted mb-0">
+                        Todavía no hay ninguno. El ensayo vive en memoria mientras se trabaja con
+                        él; para conservarlo entre reinicios hay que guardarlo desde su pantalla.
+                    </p>
+                } else {
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr><th>Nombre</th><th>Modificado</th><th class="text-end">Tamaño</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var g in guardados) {
+                            <tr>
+                                <td><a asp-action="CargarDisco" asp-route-fichero="@g.Fichero">@g.Nombre</a></td>
+                                <td>@g.Modificado.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-end">@((g.Bytes / 1024.0).ToString("N0")) KB</td>
+                                <td class="text-end">
+                                    <form method="post" asp-action="BorrarDisco" class="d-inline">
+                                        <input type="hidden" name="fichero" value="@g.Fichero" />
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('¿Borrar el ensayo @g.Nombre?')">Borrar</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>

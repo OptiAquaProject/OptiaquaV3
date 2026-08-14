@@ -6,6 +6,9 @@
 # Registro de incidencias generado en ejecución
 OptiAqua.Api/Logs/
 
+# Ensayos de LAB-ONE guardados por el usuario: son datos de trabajo, no del proyecto
+OptiAqua.Api/App_Data/
+
 # Visual Studio
 .vs/
 

@@ -9,7 +9,7 @@
     /// UnidadCultivoDatosHidricos es una clase que almacena y proporciona la mayoria de los datos necesarios para el calculo del balance hídrico de una unidad de cultivo en una temporada.
     /// Encapsula los datos necesarios para los cálculos del balance hídrico.
     /// </summary>
-    public class UnidadCultivoDatosHidricos {
+    public partial class UnidadCultivoDatosHidricos {
         /// <summary>
         /// Defines the lDatosClimaticos.
         /// </summary>
@@ -88,7 +88,9 @@
         /// <summary>
         /// Gets the UnidadCultivoExtensionM2.
         /// </summary>
-        public double? UnidadCultivoExtensionM2 => DB.UnidadCultivoExtensionM2(unidadCultivo.IdUnidadCultivo, temporada.IdTemporada);
+        public double? UnidadCultivoExtensionM2 => EsLab
+            ? pUnidadCultivoExtensionM2
+            : DB.UnidadCultivoExtensionM2(unidadCultivo.IdUnidadCultivo, temporada.IdTemporada);
 
         /// <summary>
         /// Gets the IdTemporada.
@@ -103,7 +105,9 @@
         /// <summary>
         /// Gets the NParcelas.
         /// </summary>
-        public int? NParcelas => DB.NParcelas(unidadCultivo.IdUnidadCultivo, temporada.IdTemporada);
+        public int? NParcelas => EsLab
+            ? Ensayo.NParcelas
+            : DB.NParcelas(unidadCultivo.IdUnidadCultivo, temporada.IdTemporada);
 
         /// <summary>
         /// Gets the ReganteNombre.
@@ -147,7 +151,11 @@
         /// En caso de que no existandatos retorna fecha actual.
         /// </summary>
         /// <returns>.</returns>
-        public DateTime FechaSiembra() => (DateTime)unidadCultivoCultivo.FechaSiembra();
+        public DateTime FechaSiembra() => EsLab
+            // En un ensayo la fecha de siembra es la que el usuario haya puesto en la etapa 1;
+            // ir a buscarla a la base de datos devolvería la real e ignoraría el cambio.
+            ? UnidadCultivoCultivoEtapasList[0].FechaInicioEtapa
+            : (DateTime)unidadCultivoCultivo.FechaSiembra();
 
         /// <summary>
         /// Gets the CultivoNombre.
@@ -168,7 +176,9 @@
         /// <summary>
         /// Gets the IdEstacion.
         /// </summary>
-        public int IdEstacion => DB.EstacionDeUC(unidadCultivo.IdUnidadCultivo, IdTemporada);
+        public int IdEstacion => EsLab
+            ? Ensayo.IdEstacion
+            : DB.EstacionDeUC(unidadCultivo.IdUnidadCultivo, IdTemporada);
 
         /// <summary>
         /// Gets the TipoSueloDescripcion.
@@ -317,17 +327,7 @@
             if (lUCSuelo == null || lUCSuelo.Count == 0)
                 throw new Exception("No se ha definido suelo para la unidad de Cultivo:" + idUnidadCultivo);
 
-            // La raíz se mide en METROS y el suelo en centímetros. Si la raíz del cultivo
-            // llega más hondo de lo que se ha medido el suelo, el agua disponible se calcula
-            // solo hasta donde hay dato: no se extrapola. Se avisa porque cambia el resultado
-            // —en viña llegó a ser un 29% menos de agua disponible— y no es un fallo, es una
-            // decisión: el suelo por debajo de lo medido no se inventa.
-            double sueloCm = lUCSuelo.Max(x => x.ProfundidadCM);
-            double raizCm = CultivoProfRaizMax * 100.0;
-            if (raizCm > sueloCm + 0.5)
-                Incidencias.Añade("RAIZ_SUPERA_SUELO", GravedadIncidencia.Aviso,
-                    $"La raíz del cultivo llega a {raizCm:N0} cm y el suelo está medido hasta " +
-                    $"{sueloCm:N0} cm: el agua disponible se calcula solo hasta esa profundidad.");
+            AvisaSiLaRaizSuperaElSuelo();
 
             riegoTipo = DB.RiegoTipo(unidadCultivoCultivo.IdTipoRiego);
 
@@ -387,7 +387,15 @@
         /// <param name="provincias">.</param>
         /// <param name="municipios">The municipios<see cref="string"/>.</param>
         /// <param name="parajes">The parajes<see cref="string"/>.</param>
-        public void ObtenerMunicicioParaje(out string provincias, out string municipios, out string parajes) => DB.ObtenerMunicicioParaje(temporada.IdTemporada, unidadCultivo.IdUnidadCultivo, out provincias, out municipios, out parajes);
+        public void ObtenerMunicicioParaje(out string provincias, out string municipios, out string parajes) {
+            if (EsLab) {
+                // Un ensayo se lleva dentro lo que necesita: así un JSON traído de otra
+                // instalación se sigue viendo aunque esa unidad de cultivo no exista aquí.
+                provincias = null; municipios = Ensayo.Municipios; parajes = Ensayo.Parajes;
+                return;
+            }
+            DB.ObtenerMunicicioParaje(temporada.IdTemporada, unidadCultivo.IdUnidadCultivo, out provincias, out municipios, out parajes);
+        }
 
         /// <summary>
         /// Retonar el cálculo de la fecha de fin de estudio.

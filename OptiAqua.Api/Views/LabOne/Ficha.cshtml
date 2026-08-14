@@ -1,0 +1,494 @@
+@model DatosOptiaqua.LabOneFicha
+@using DatosOptiaqua
+@using System.Globalization
+@{
+    var e = Model.Ensayo;
+    ViewBag.Title = "LAB-ONE · " + e.Nombre;
+
+    // Los números se escriben SIEMPRE con punto decimal. El navegador exige ese formato en los
+    // campos numéricos, y el ensayo viaja de vuelta en JSON, que también es invariante. Usar la
+    // cultura española aquí rompería las dos cosas a la vez.
+    string N(double v) => v.ToString(CultureInfo.InvariantCulture);
+    string NN(double? v) => v?.ToString(CultureInfo.InvariantCulture) ?? "";
+    string F(DateTime v) => v.ToString("yyyy-MM-dd");
+    string FN(DateTime? v) => v?.ToString("yyyy-MM-dd") ?? "";
+
+    // El ensayo completo va incrustado como JSON: es la base sobre la que el navegador aplica lo
+    // que se haya editado. Se escapa el menor-que para que ni un nombre ni una nota puedan cerrar
+    // la etiqueta <script> y colarse como marcado.
+    var jsonBase = LabOneAlmacen.ASerializado(e).Replace("<", "\\u003c");
+}
+
+<style>
+    .lab input, .lab select { font-size:.8rem; padding:.15rem .35rem; height:auto; }
+    .lab .table { font-size:.8rem; }
+    .lab .table td, .lab .table th { padding:.2rem .3rem; vertical-align:middle; }
+    .lab .num { text-align:right; }
+    .lab-scroll { max-height:26rem; overflow:auto; }
+    .lab-ancho { overflow-x:auto; }
+    .oa-barra { position:relative; height:1.15rem; background:#f1f3f5; border-radius:.25rem; overflow:hidden; min-width:200px; }
+    .oa-barra > i { position:absolute; top:0; bottom:0; display:block; }
+    .oa-barra > u { position:absolute; top:0; bottom:0; width:3px; margin-left:-1px; background:#212529;
+                    box-shadow:0 0 0 1px #fff; border-radius:1px; }
+    .lab-sticky { position:sticky; top:56px; z-index:5; background:#fff; padding:.5rem 0; border-bottom:1px solid #dee2e6; }
+</style>
+
+<h2 class="mb-1">
+    LAB-ONE <small class="text-muted">@e.IdUnidadCultivo · temporada @e.IdTemporada</small>
+    <a class="btn btn-sm btn-outline-secondary ms-2" asp-action="Index">&laquo; Ensayos</a>
+    <a class="btn btn-sm btn-outline-secondary" asp-controller="Panel" asp-action="UnidadCultivo" asp-route-id="@e.IdUnidadCultivo">Ficha real</a>
+</h2>
+<p class="text-muted mb-2">
+    Los datos de abajo son una copia en memoria: se pueden cambiar todos y recalcular las veces
+    que haga falta. <b>Nada de esto se escribe en la base de datos.</b>
+    Un reinicio del servidor se lleva el ensayo por delante; para conservarlo, guárdalo en disco.
+</p>
+<partial name="_MensajesPanel" />
+
+<form method="post" asp-action="Recalcular" id="formLab" class="lab">
+    <input type="hidden" name="json" id="json" />
+
+    @* Todos los botones mandan el MISMO formulario —y por tanto el ensayo tal y como está en
+       pantalla— y solo cambian de destino con formaction. Guardar en disco sin esto guardaría lo
+       último recalculado en vez de lo que se está viendo. *@
+    <div class="lab-sticky d-flex flex-wrap align-items-center gap-2 mb-3">
+        <button class="btn btn-primary">Recalcular</button>
+        <span class="text-muted small">último cálculo: @Model.Milisegundos ms</span>
+        <span class="flex-grow-1"></span>
+        <input name="nombre" value="@e.Nombre" class="form-control form-control-sm"
+               style="max-width:16rem" placeholder="nombre del ensayo" />
+        <button class="btn btn-outline-primary btn-sm" formaction="@Url.Action("GuardarDisco")">Guardar en disco</button>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Json" download="@(e.Nombre).json">Descargar JSON</a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copiarJson()">Copiar JSON</button>
+        <button class="btn btn-outline-warning btn-sm" formaction="@Url.Action("Restaurar")"
+                onclick="return confirm('Se vuelven a copiar los datos de la base de datos y se pierden los cambios del ensayo.')">Volver a los datos reales</button>
+    </div>
+
+    @* --------------------------------------------------------------- resultado *@
+    <div class="card mb-3 @(Model.HayError ? "border-danger" : "")">
+        <div class="card-body">
+            @if (Model.Estado != null) {
+                var est = Model.Estado;
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <h5 class="mb-2" style="font-size:1rem">Estado hídrico calculado</h5>
+                        <partial name="_BarraEstres" model="est" />
+                    </div>
+                    <div class="col-md-7">
+                        <table class="table table-sm mb-0">
+                            <tr><td>Agua útil</td><td class="text-end">@(est.AguaUtil?.ToString("N1")) mm</td>
+                                <td>Regar en</td><td class="text-end">@(est.RegarEnNDias == null ? "—" : est.RegarEnNDias + " día(s)")</td></tr>
+                            <tr><td>Lluvia acumulada</td><td class="text-end">@(est.SumaLluvia?.ToString("N1")) mm</td>
+                                <td>Riego acumulado</td><td class="text-end">@(est.SumaRiego?.ToString("N1")) mm</td></tr>
+                            <tr><td>Consumo (ETc)</td><td class="text-end">@est.Consumo.ToString("N1") mm</td>
+                                <td>Días con estrés</td><td class="text-end">@est.NDiasEstres</td></tr>
+                            <tr><td>Capacidad de campo</td><td class="text-end">@(est.CapacidadDeCampo?.ToString("N1")) mm</td>
+                                <td>Punto de marchitez</td><td class="text-end">@(est.PuntoDeMarchited?.ToString("N1")) mm</td></tr>
+                        </table>
+                    </div>
+                </div>
+            } else {
+                <div class="alert alert-danger mb-0">No se ha podido calcular: @Model.ErrorCalculo</div>
+            }
+        </div>
+    </div>
+
+    @* ------------------------------------------------------------- incidencias *@
+    @if (Model.Incidencias.Count > 0) {
+        <div class="card mb-3 @(Model.HayError ? "border-danger" : "border-warning")">
+            <div class="card-body">
+                <h5 class="mb-2" style="font-size:1rem">Incidencias del cálculo <small class="text-muted">@Model.Incidencias.Count</small></h5>
+                <ul class="list-unstyled mb-0">
+                    @foreach (var inc in Model.Incidencias) {
+                        var esError = inc.Gravedad == GravedadIncidencia.Error;
+                        <li class="d-flex gap-2 mb-2">
+                            <span class="@(esError ? "text-danger" : "text-warning")" style="font-size:1.1rem;line-height:1.2">@Html.Raw(esError ? "&#9940;" : "&#9888;")</span>
+                            <span>@inc.Mensaje <br /><small class="text-muted">@inc.Codigo</small></span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    } else if (Model.Estado != null) {
+        <p class="text-success mb-3"><small>&#10003; Calculado con todos los datos, sin incidencias.</small></p>
+    }
+
+    @* ---------------------------------------------------------------- gráfico *@
+    @if (Model.Lineas.Count > 0) {
+        <div class="card mb-3"><div class="card-body">
+            <h5 style="font-size:1rem">Evolución del agua en el suelo</h5>
+            @Html.Raw(GraficoBalance.Svg(Model.Lineas))
+            <p class="text-muted mb-0 mt-2"><small>@Model.Lineas.Count día(s) de balance</small></p>
+        </div></div>
+    }
+
+    @* --------------------------------------------------------------- cabecera *@
+    <details class="card mb-3" open>
+        <summary class="card-header">Unidad de cultivo, cultivo y riego</summary>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-3"><label class="form-label mb-0">Nombre del ensayo</label>
+                    <input class="form-control" data-campo="Nombre" data-tipo="texto" value="@e.Nombre" /></div>
+                <div class="col-md-3"><label class="form-label mb-0">Fecha del estado</label>
+                    <input type="date" class="form-control" data-campo="Fecha" data-tipo="fecha" value="@F(e.Fecha)" /></div>
+                <div class="col-md-6"><label class="form-label mb-0">Notas</label>
+                    <input class="form-control" data-campo="Notas" data-tipo="texto" value="@e.Notas" /></div>
+
+                <div class="col-md-3"><label class="form-label mb-0">Superficie (m²)</label>
+                    <input type="number" step="any" class="form-control num" data-campo="SuperficieM2" data-tipo="num" value="@N(e.SuperficieM2)" />
+                    <div class="form-text">Convierte los m³ de riego en mm.</div></div>
+                <div class="col-md-3"><label class="form-label mb-0">Nº de parcelas</label>
+                    <input type="number" class="form-control num" data-campo="NParcelas" data-tipo="int" value="@e.NParcelas" /></div>
+                <div class="col-md-3"><label class="form-label mb-0">Pluviometría (mm/h)</label>
+                    <input type="number" step="any" class="form-control num" data-campo="Pluviometria" data-tipo="num" value="@N(e.Pluviometria)" /></div>
+                <div class="col-md-3"><label class="form-label mb-0">Eficiencia del riego</label>
+                    <input type="number" step="any" class="form-control num" data-campo="EficienciaRiego" data-tipo="num" value="@N(e.EficienciaRiego)" />
+                    <div class="form-text">Fracción que llega a la raíz (0 a 1).</div></div>
+
+                <div class="col-md-3"><label class="form-label mb-0">Tipo de riego</label>
+                    <input class="form-control" data-campo="TipoRiego" data-tipo="texto" value="@e.TipoRiego" /></div>
+                <div class="col-md-3"><label class="form-label mb-0">Cultivo</label>
+                    <input class="form-control" data-campo="CultivoNombre" data-tipo="texto" value="@e.CultivoNombre" /></div>
+                <div class="col-md-3"><label class="form-label mb-0">Temperatura base (°C)</label>
+                    <input type="number" step="any" class="form-control num" data-campo="TBase" data-tipo="num" value="@NN(e.TBase)" /></div>
+                <div class="col-md-3"><label class="form-label mb-0">Integral de emergencia</label>
+                    <input type="number" step="any" class="form-control num" data-campo="IntegralEmergencia" data-tipo="num" value="@N(e.IntegralEmergencia)" /></div>
+
+                <div class="col-md-3"><label class="form-label mb-0">Raíz inicial (m)</label>
+                    <input type="number" step="any" class="form-control num" data-campo="ProfRaizInicial" data-tipo="num" value="@N(e.ProfRaizInicial)" /></div>
+                <div class="col-md-3"><label class="form-label mb-0">Raíz máxima (m)</label>
+                    <input type="number" step="any" class="form-control num" data-campo="ProfRaizMax" data-tipo="num" value="@N(e.ProfRaizMax)" />
+                    <div class="form-text">El suelo está medido hasta @e.SueloProfundidadCM.ToString("N0") cm.</div></div>
+                <div class="col-md-3"><label class="form-label mb-0">Estación climática</label>
+                    <input type="number" class="form-control num" data-campo="IdEstacion" data-tipo="int" value="@e.IdEstacion" />
+                    <div class="form-text">@e.EstacionNombre</div></div>
+                <div class="col-md-3"><label class="form-label mb-0">Textura del suelo</label>
+                    <input class="form-control" data-campo="TipoSueloDescripcion" data-tipo="texto" value="@e.TipoSueloDescripcion" /></div>
+            </div>
+        </div>
+    </details>
+
+    @* ----------------------------------------------------------------- etapas *@
+    <details class="card mb-3" open>
+        <summary class="card-header">Etapas de desarrollo (@e.Etapas.Count)</summary>
+        <div class="card-body lab-ancho">
+            <table class="table table-sm table-bordered" style="min-width:1400px">
+                <thead class="table-light"><tr>
+                    <th>#</th><th>Etapa</th><th>Inicio</th><th>Confirmada</th><th>Por días</th><th>Días</th>
+                    <th>Kc ini</th><th>Kc fin</th><th>Cob ini</th><th>Cob fin</th><th>Alt ini</th><th>Alt fin</th>
+                    <th>F. agotam.</th><th>Tipo estrés</th><th>Cob</th><th>Alt</th><th>Raíz</th><th>Riega</th><th>Parámetros</th>
+                </tr></thead>
+                <tbody>
+                @for (int i = 0; i < e.Etapas.Count; i++) {
+                    var et = e.Etapas[i];
+                    <tr>
+                        <td class="text-muted">@(i + 1)</td>
+                        <td><input class="form-control" style="min-width:9rem" data-campo="Etapas.@(i).Etapa" data-tipo="texto" value="@et.Etapa" /></td>
+                        <td><input type="date" class="form-control" data-campo="Etapas.@(i).FechaInicioEtapa" data-tipo="fecha" value="@F(et.FechaInicioEtapa)" /></td>
+                        <td><input type="date" class="form-control" data-campo="Etapas.@(i).FechaInicioEtapaConfirmada" data-tipo="fecha" value="@FN(et.FechaInicioEtapaConfirmada)" /></td>
+                        <td class="text-center"><input type="checkbox" class="form-check-input" data-campo="Etapas.@(i).DefinicionPorDias" data-tipo="bool" checked="@et.DefinicionPorDias" /></td>
+                        <td><input type="number" class="form-control num" style="width:5rem" data-campo="Etapas.@(i).DuracionDiasEtapa" data-tipo="int" value="@et.DuracionDiasEtapa" /></td>
+                        <td><input type="number" step="any" class="form-control num" style="width:5rem" data-campo="Etapas.@(i).KcInicial" data-tipo="num" value="@N(et.KcInicial)" /></td>
+                        <td><input type="number" step="any" class="form-control num" style="width:5rem" data-campo="Etapas.@(i).KcFinal" data-tipo="num" value="@N(et.KcFinal)" /></td>
+                        <td><input type="number" step="any" class="form-control num" style="width:5rem" data-campo="Etapas.@(i).CobInicial" data-tipo="num" value="@NN(et.CobInicial)" /></td>
+                        <td><input type="number" step="any" class="form-control num" style="width:5rem" data-campo="Etapas.@(i).CobFinal" data-tipo="num" value="@NN(et.CobFinal)" /></td>
+                        <td><input type="number" step="any" class="form-control num" style="width:5rem" data-campo="Etapas.@(i).AlturaInicial" data-tipo="num" value="@NN(et.AlturaInicial)" /></td>
+                        <td><input type="number" step="any" class="form-control num" style="width:5rem" data-campo="Etapas.@(i).AlturaFinal" data-tipo="num" value="@NN(et.AlturaFinal)" /></td>
+                        <td><input type="number" step="any" class="form-control num" style="width:5rem" data-campo="Etapas.@(i).FactorDeAgotamiento" data-tipo="num" value="@N(et.FactorDeAgotamiento)" /></td>
+                        <td>
+                            <select class="form-select" style="min-width:7rem" data-campo="Etapas.@(i).IdTipoEstres" data-tipo="texto">
+                                @foreach (var te in Model.TiposEstres) {
+                                    <option value="@te" selected="@(te == et.IdTipoEstres)">@te</option>
+                                }
+                            </select>
+                        </td>
+                        <td><input type="number" class="form-control num" style="width:4rem" data-campo="Etapas.@(i).IdTipoCalculoCobertura" data-tipo="int" value="@et.IdTipoCalculoCobertura" /></td>
+                        <td><input type="number" class="form-control num" style="width:4rem" data-campo="Etapas.@(i).IdTipoCalculoAltura" data-tipo="int" value="@et.IdTipoCalculoAltura" /></td>
+                        <td><input type="number" class="form-control num" style="width:4rem" data-campo="Etapas.@(i).IdTipoCalculoLongitudRaiz" data-tipo="int" value="@et.IdTipoCalculoLongitudRaiz" /></td>
+                        <td class="text-center"><input type="checkbox" class="form-check-input" data-campo="Etapas.@(i).SeAplicaRiego" data-tipo="bool" checked="@(et.SeAplicaRiego == true)" /></td>
+                        <td><input class="form-control" style="min-width:14rem" data-campo="Etapas.@(i).ParametrosJson" data-tipo="texto" value="@et.ParametrosJson" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <p class="text-muted mb-0"><small>
+                La fecha de inicio de la etapa 1 es la fecha de siembra: mueve el principio de todo
+                el balance. Los parámetros van en JSON, con el mismo formato que en la base de datos.
+            </small></p>
+        </div>
+    </details>
+
+    @* ------------------------------------------------------------------ suelo *@
+    <details class="card mb-3">
+        <summary class="card-header">Suelo (@e.Suelo.Count horizontes)</summary>
+        <div class="card-body">
+            <table class="table table-sm table-bordered" style="max-width:60rem">
+                <thead class="table-light"><tr>
+                    <th>Parcela</th><th>Profundidad (cm)</th><th>Superficie (m²)</th>
+                    <th>Arena %</th><th>Limo %</th><th>Arcilla %</th><th>El. gruesos %</th><th>M. orgánica %</th>
+                </tr></thead>
+                <tbody>
+                @for (int i = 0; i < e.Suelo.Count; i++) {
+                    var s = e.Suelo[i];
+                    <tr>
+                        <td><input type="number" class="form-control num" style="width:6rem" data-campo="Suelo.@(i).IdParcelaInt" data-tipo="int" value="@s.IdParcelaInt" /></td>
+                        <td><input type="number" step="any" class="form-control num" data-campo="Suelo.@(i).ProfundidadCM" data-tipo="num" value="@N(s.ProfundidadCM)" /></td>
+                        <td><input type="number" step="any" class="form-control num" data-campo="Suelo.@(i).Superficie" data-tipo="num" value="@N(s.Superficie)" /></td>
+                        <td><input type="number" step="any" class="form-control num" data-campo="Suelo.@(i).Arena" data-tipo="num" value="@N(s.Arena)" /></td>
+                        <td><input type="number" step="any" class="form-control num" data-campo="Suelo.@(i).Limo" data-tipo="num" value="@N(s.Limo)" /></td>
+                        <td><input type="number" step="any" class="form-control num" data-campo="Suelo.@(i).Arcilla" data-tipo="num" value="@N(s.Arcilla)" /></td>
+                        <td><input type="number" step="any" class="form-control num" data-campo="Suelo.@(i).ElementosGruesos" data-tipo="num" value="@N(s.ElementosGruesos)" /></td>
+                        <td><input type="number" step="any" class="form-control num" data-campo="Suelo.@(i).MateriaOrganica" data-tipo="num" value="@N(s.MateriaOrganica)" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <p class="text-muted mb-0"><small>
+                De la textura salen la capacidad de campo y el punto de marchitez por Saxton-Rawls.
+                La profundidad es acumulada desde la superficie.
+            </small></p>
+        </div>
+    </details>
+
+    @* ------------------------------------------------------------------ clima *@
+    <details class="card mb-3">
+        <summary class="card-header">Clima (@e.Clima.Count días)</summary>
+        <div class="card-body">
+            <div class="lab-scroll">
+                <table class="table table-sm table-bordered" style="max-width:52rem">
+                    <thead class="table-light"><tr>
+                        <th>Fecha</th><th>ETo (mm)</th><th>Precipitación (mm)</th>
+                        <th>T media (°C)</th><th>Humedad %</th><th>Viento (m/s)</th>
+                    </tr></thead>
+                    <tbody>
+                    @for (int i = 0; i < e.Clima.Count; i++) {
+                        var c = e.Clima[i];
+                        <tr>
+                            <td><input type="date" class="form-control" data-campo="Clima.@(i).Fecha" data-tipo="fecha" value="@F(c.Fecha)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-campo="Clima.@(i).Eto" data-tipo="num" value="@N(c.Eto)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-campo="Clima.@(i).Precipitacion" data-tipo="num" value="@N(c.Precipitacion)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-campo="Clima.@(i).TempMedia" data-tipo="num" value="@N(c.TempMedia)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-campo="Clima.@(i).HumedadMedia" data-tipo="num" value="@N(c.HumedadMedia)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-campo="Clima.@(i).VelViento" data-tipo="num" value="@N(c.VelViento)" /></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex flex-wrap align-items-end gap-2 mt-2">
+                <div>
+                    <label class="form-label mb-0">Multiplicar toda la ETo por</label>
+                    <input type="number" step="any" id="factorEto" class="form-control num" style="width:7rem" value="1" />
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="escalar('Eto', 'factorEto')">Aplicar</button>
+                <div class="ms-3">
+                    <label class="form-label mb-0">Multiplicar toda la lluvia por</label>
+                    <input type="number" step="any" id="factorLluvia" class="form-control num" style="width:7rem" value="1" />
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="escalar('Precipitacion', 'factorLluvia')">Aplicar</button>
+                <span class="text-muted small ms-2">Cambia los campos de arriba; hay que recalcular después.</span>
+            </div>
+            <p class="text-muted mb-0 mt-2"><small>
+                Los días que falten se rellenan con la media del mes al calcular, y queda anotado
+                como incidencia. La serie llega hasta el final del periodo de estudio.
+            </small></p>
+        </div>
+    </details>
+
+    @* ----------------------------------------------------------------- riegos *@
+    <details class="card mb-3">
+        <summary class="card-header">Riegos (@e.Riegos.Count)</summary>
+        <div class="card-body">
+            <div class="lab-scroll">
+                <table class="table table-sm table-bordered" style="max-width:34rem">
+                    <thead class="table-light"><tr><th>Fecha</th><th>Riego (m³)</th><th></th></tr></thead>
+                    <tbody id="filasRiegos">
+                    @foreach (var r in e.Riegos) {
+                        <tr data-fila="riego">
+                            <td><input type="date" class="form-control" data-prop="Fecha" data-tipo="fecha" value="@F(r.Fecha)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-prop="RiegoM3" data-tipo="num" value="@N(r.RiegoM3)" /></td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="quitaFila(this)">&times;</button></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="añadeRiego()">Añadir riego</button>
+            <p class="text-muted mb-0 mt-2"><small>
+                Los m³ se pasan a mm con la superficie de arriba. Un riego en la tabla de datos
+                extra, si lo hay para ese día, tiene prioridad sobre este.
+            </small></p>
+        </div>
+    </details>
+
+    @* ------------------------------------------------------------ datos extra *@
+    <details class="card mb-3">
+        <summary class="card-header">Datos extra (@e.DatosExtra.Count)</summary>
+        <div class="card-body">
+            <div class="lab-scroll">
+                <table class="table table-sm table-bordered" style="max-width:52rem">
+                    <thead class="table-light"><tr>
+                        <th>Fecha</th><th>Cobertura</th><th>Altura</th><th>Lluvia (mm)</th><th>Riego (m³)</th><th>DriEnd</th><th></th>
+                    </tr></thead>
+                    <tbody id="filasExtra">
+                    @foreach (var x in e.DatosExtra) {
+                        <tr data-fila="extra">
+                            <td><input type="date" class="form-control" data-prop="Fecha" data-tipo="fecha" value="@F(x.Fecha)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-prop="Cobertura" data-tipo="num" value="@NN(x.Cobertura)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-prop="Altura" data-tipo="num" value="@NN(x.Altura)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-prop="LluviaMm" data-tipo="num" value="@NN(x.LluviaMm)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-prop="RiegoM3" data-tipo="num" value="@NN(x.RiegoM3)" /></td>
+                            <td><input type="number" step="any" class="form-control num" data-prop="DriEnd" data-tipo="num" value="@NN(x.DriEnd)" /></td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="quitaFila(this)">&times;</button></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="añadeExtra()">Añadir día</button>
+            <p class="text-muted mb-0 mt-2"><small>
+                Lo que se ponga aquí manda sobre la serie normal para ese día: cobertura y altura
+                medidas en campo, lluvia o riego corregidos.
+            </small></p>
+        </div>
+    </details>
+
+    @* --------------------------------------------------------- balance en JSON *@
+    <details class="card mb-3">
+        <summary class="card-header">Balance calculado (@Model.Lineas.Count días)</summary>
+        <div class="card-body">
+            <div class="lab-scroll lab-ancho">
+                <table class="table table-sm table-bordered" style="min-width:1100px">
+                    <thead class="table-light"><tr>
+                        <th>Fecha</th><th>Etapa</th><th>Kc</th><th>Ks</th><th>ETc</th><th>Raíz</th>
+                        <th>Lluvia</th><th>Riego</th><th>Agotam. fin</th><th>Agua suelo</th><th>Índice</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var l in Model.Lineas) {
+                        <tr>
+                            <td>@(l.Fecha?.ToString("dd/MM/yyyy"))</td>
+                            <td>@l.NombreEtapaDesarrollo</td>
+                            <td class="num">@l.Kc.ToString("N3")</td>
+                            <td class="num">@l.CoeficienteEstresHidrico.ToString("N3")</td>
+                            <td class="num">@l.EtcFinal.ToString("N2")</td>
+                            <td class="num">@l.LongitudRaiz.ToString("N2")</td>
+                            <td class="num">@l.Lluvia.ToString("N1")</td>
+                            <td class="num">@l.Riego.ToString("N1")</td>
+                            <td class="num">@l.AgotamientoFinalDia.ToString("N1")</td>
+                            <td class="num">@l.ContenidoAguaSuelo.ToString("N1")</td>
+                            <td class="num">@l.IndiceEstres.ToString("N2")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <a class="btn btn-sm btn-outline-secondary mt-2" asp-action="BalanceJson">Balance completo en JSON</a>
+        </div>
+    </details>
+</form>
+
+<script type="application/json" id="ensayoBase">@Html.Raw(jsonBase)</script>
+
+@section scripts {
+<script>
+    // El ensayo vuelve al servidor como UN JSON y no como trescientos campos sueltos: así no se
+    // topa con el tope de claves del formulario y los decimales viajan siempre con punto, sin
+    // depender de la cultura del servidor.
+    function construirEnsayo() {
+        var e = JSON.parse(document.getElementById('ensayoBase').textContent);
+
+        document.querySelectorAll('[data-campo]').forEach(function (c) {
+            var partes = c.dataset.campo.split('.');
+            var obj = e;
+            for (var i = 0; i < partes.length - 1; i++) obj = obj[partes[i]];
+            obj[partes[partes.length - 1]] = valorDe(c);
+        });
+
+        // Riegos y datos extra se rehacen desde las filas y no por índice: son las dos tablas
+        // donde se pueden añadir y quitar líneas, y con índices fijos quedarían huecos.
+        e.Riegos = filasDe('filasRiegos', { IdUnidadCultivo: e.IdUnidadCultivo });
+        e.DatosExtra = filasDe('filasExtra', { IdUnidadCultivo: e.IdUnidadCultivo });
+        return e;
+    }
+
+    function valorDe(c) {
+        var v = c.value;
+        switch (c.dataset.tipo) {
+            case 'num': return v === '' ? null : parseFloat(v);
+            case 'int': return v === '' ? null : parseInt(v, 10);
+            case 'bool': return c.checked;
+            case 'fecha': return v === '' ? null : v;
+            default: return v;
+        }
+    }
+
+    function filasDe(idCuerpo, base) {
+        var ret = [];
+        var cuerpo = document.getElementById(idCuerpo);
+        if (!cuerpo) return ret;
+        cuerpo.querySelectorAll('tr[data-fila]').forEach(function (fila) {
+            var o = Object.assign({}, base);
+            fila.querySelectorAll('[data-prop]').forEach(function (c) { o[c.dataset.prop] = valorDe(c); });
+            if (o.Fecha) ret.push(o);   // una fila sin fecha no dice nada: se descarta
+        });
+        return ret;
+    }
+
+    function quitaFila(boton) { boton.closest('tr').remove(); }
+
+    function nuevaFila(idCuerpo) {
+        var cuerpo = document.getElementById(idCuerpo);
+        var modelo = cuerpo.querySelector('tr[data-fila]');
+        var fila;
+        if (modelo) {
+            fila = modelo.cloneNode(true);
+            fila.querySelectorAll('input').forEach(function (c) { c.value = ''; });
+        } else {
+            return null;   // sin ninguna fila de la que copiar no hay plantilla
+        }
+        cuerpo.appendChild(fila);
+        return fila;
+    }
+
+    function añadeRiego() {
+        var fila = nuevaFila('filasRiegos');
+        if (!fila) { alert('No hay ninguna fila de riego de la que partir.'); return; }
+        fila.querySelector('[data-prop="Fecha"]').focus();
+    }
+
+    function añadeExtra() {
+        var fila = nuevaFila('filasExtra');
+        if (!fila) { alert('No hay ningún día de datos extra del que partir.'); return; }
+        fila.querySelector('[data-prop="Fecha"]').focus();
+    }
+
+    // Escalar toda una columna del clima de golpe: es la prueba que más se repite —"¿y si el año
+    // hubiera sido un 20% más seco?"— y hacerla campo a campo son trescientas ediciones.
+    function escalar(propiedad, idFactor) {
+        var f = parseFloat(document.getElementById(idFactor).value);
+        if (isNaN(f)) { alert('El factor no es un número.'); return; }
+        var n = 0;
+        document.querySelectorAll('[data-campo^="Clima."]').forEach(function (c) {
+            if (!c.dataset.campo.endsWith('.' + propiedad)) return;
+            var v = parseFloat(c.value);
+            if (isNaN(v)) return;
+            c.value = Math.round(v * f * 10000) / 10000;
+            n++;
+        });
+        alert(n + ' día(s) modificados. Pulsa Recalcular para ver el efecto.');
+    }
+
+    // Un único punto de salida: cualquiera que sea el botón, el ensayo que se está viendo se
+    // serializa en el campo oculto justo antes de mandarlo.
+    document.getElementById('formLab').addEventListener('submit', function () {
+        document.getElementById('json').value = JSON.stringify(construirEnsayo());
+    });
+
+    function copiarJson() {
+        var texto = JSON.stringify(construirEnsayo(), null, 2);
+        navigator.clipboard.writeText(texto).then(
+            function () { alert('Ensayo copiado al portapapeles (' + texto.length + ' caracteres).'); },
+            function () { alert('El navegador no ha dejado copiar al portapapeles.'); });
+    }
+</script>
+}
