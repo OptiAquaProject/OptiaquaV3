@@ -232,6 +232,22 @@ namespace WebApi {
             }
         }
 
+        /// <summary>
+        /// Las parcelas de una unidad de cultivo en GeoJSON, para pintarlas en el mapa.
+        /// Comparte la autenticación del panel, como el resto de la ficha.
+        /// </summary>
+        /// <param name="id">Identificador de la unidad de cultivo.</param>
+        public IActionResult ParcelasGeoJson(string id) {
+            try {
+                string idTemporada = DB.TemporadaActiva();
+                var parcelas = DB.GeoLocParcelasList(id, idTemporada) ?? new List<GeoLocParcela>();
+                return Content(MapaParcelas.GeoJson(parcelas), "application/geo+json");
+            } catch (Exception ex) {
+                Log.Error("Panel/ParcelasGeoJson " + id, ex);
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         // ===== Eventos con filtro por fechas =====
         public IActionResult Eventos(DateTime? desde, DateTime? hasta, string texto) {
             ViewBag.Desde = desde; ViewBag.Hasta = hasta; ViewBag.Texto = texto;

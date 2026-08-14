@@ -30,6 +30,53 @@
 
         private static string N(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
 
+        /// <summary>
+        /// Las parcelas en GeoJSON, para pintarlas sobre el mapa.
+        ///
+        /// Se compone a mano en vez de con una biblioteca de geometría: lo que hay que
+        /// convertir es un WKT de polígonos a coordenadas, y meter NetTopologySuite en la
+        /// capa web para esto sería traerse un mundo por un puñado de paréntesis. GeoJSON
+        /// va SIEMPRE en [longitud, latitud] y en EPSG:4326, que es justo lo que guarda
+        /// `Parcela.GEO`.
+        /// </summary>
+        /// <param name="parcelas">Las parcelas con su WKT.</param>
+        /// <returns>Una FeatureCollection; vacía si ninguna tiene geometría.</returns>
+        public static string GeoJson(List<GeoLocParcela> parcelas) {
+            var sb = new StringBuilder("{\"type\":\"FeatureCollection\",\"features\":[");
+            bool primera = true;
+            foreach (var p in parcelas ?? new List<GeoLocParcela>()) {
+                var anillos = Anillos(p.GEO).Where(a => a.Count >= 3).ToList();
+                if (anillos.Count == 0)
+                    continue;
+                if (!primera) sb.Append(',');
+                primera = false;
+                sb.Append("{\"type\":\"Feature\",\"properties\":{")
+                  .Append("\"idParcela\":").Append(p.IdParcelaInt)
+                  .Append(",\"municipio\":").Append(Cadena(p.Municipio))
+                  .Append(",\"poligono\":").Append(p.IdPoligono)
+                  .Append(",\"numero\":").Append(p.IdParcela)
+                  .Append("},\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[");
+                bool primerAnillo = true;
+                foreach (var anillo in anillos) {
+                    if (!primerAnillo) sb.Append(',');
+                    primerAnillo = false;
+                    sb.Append('[');
+                    for (int i = 0; i < anillo.Count; i++) {
+                        if (i > 0) sb.Append(',');
+                        sb.Append('[').Append(Coord(anillo[i].Lon)).Append(',').Append(Coord(anillo[i].Lat)).Append(']');
+                    }
+                    sb.Append(']');
+                }
+                sb.Append("]}}");
+            }
+            return sb.Append("]}").ToString();
+        }
+
+        private static string Coord(double v) => v.ToString("0.########", CultureInfo.InvariantCulture);
+
+        private static string Cadena(string v) =>
+            v == null ? "null" : "\"" + v.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+
         /// <summary>Centro de las parcelas, para los enlaces a los mapas de verdad.</summary>
         /// <param name="parcelas">Las parcelas con su WKT.</param>
         /// <returns>Latitud y longitud medias, o null si no hay geometría.</returns>
