@@ -181,6 +181,9 @@ namespace WebApi {
                 try { detalle.DatosExtra.AddRange(DB.DatosExtraList(id) ?? new List<UnidadCultivoDatosExtra>()); }
                 catch (Exception ex) { detalle.ErrorDatosExtra = ex.Message; }
 
+                try { detalle.Parcelas.AddRange(DB.GeoLocParcelasList(id, detalle.IdTemporada) ?? new List<GeoLocParcela>()); }
+                catch (Exception ex) { detalle.ErrorParcelas = ex.Message; }
+
                 // El balance da la evolución y las lluvias tal y como las ha visto el cálculo.
                 DateTime siembra = detalle.Fecha, fin = detalle.Fecha;
                 try {
@@ -200,6 +203,33 @@ namespace WebApi {
                 TempData["error"] = ex.Message;
             }
             return View(detalle);
+        }
+
+        /// <summary>
+        /// El balance de una unidad de cultivo en JSON, para el botón de copiar al
+        /// portapapeles de su ficha.
+        ///
+        /// Va por aquí y no por `/api/balancehidrico` porque los endpoints de la API llevan
+        /// `[Authorize]` a secas, que exige token JWT o clave de API; desde el navegador, con
+        /// la cookie de sesión, responden 401. Este comparte la autenticación del panel.
+        ///
+        /// Tampoco se incrusta el JSON en la página: son 1,3 MB por unidad de cultivo, y
+        /// cargarlos siempre para el caso en que alguien pulse copiar no sale a cuenta.
+        /// </summary>
+        /// <param name="id">Identificador de la unidad de cultivo.</param>
+        public IActionResult BalanceJson(string id) {
+            try {
+                string idTemporada = DB.TemporadaActiva();
+                var t = DB.Temporada(idTemporada);
+                DateTime fecha = (t != null && t.FechaFinal < DateTime.Today) ? t.FechaFinal : DateTime.Today;
+                var bh = BalanceHidrico.Balance(id, fecha, false);
+                if (bh == null)
+                    return NotFound(new { error = "No hay balance para " + id });
+                return Json(bh.LineasBalance);
+            } catch (Exception ex) {
+                Log.Error("Panel/BalanceJson " + id, ex);
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         // ===== Eventos con filtro por fechas =====

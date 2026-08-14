@@ -38,6 +38,10 @@
         public List<UnidadCultivoDatosExtra> DatosExtra { get; } = new List<UnidadCultivoDatosExtra>();
         public string ErrorDatosExtra { get; set; }
 
+        /// <summary>Parcelas con su geometría en WKT, para dibujar el plano.</summary>
+        public List<GeoLocParcela> Parcelas { get; } = new List<GeoLocParcela>();
+        public string ErrorParcelas { get; set; }
+
         /// <summary>
         /// Las líneas del balance. Alimentan el gráfico y la tabla de lluvias: así lo que se
         /// enseña es EXACTAMENTE lo que ha usado el cálculo, no una consulta paralela que
