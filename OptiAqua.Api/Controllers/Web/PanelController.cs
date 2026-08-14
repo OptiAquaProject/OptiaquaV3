@@ -109,7 +109,8 @@ namespace WebApi {
         }
 
         // ===== Unidades de cultivo + último estado hídrico =====
-        public IActionResult UnidadesCultivo(string buscar) {
+        public IActionResult UnidadesCultivo(string buscar, [FromQuery] FiltroUnidadesCultivo filtro) {
+            filtro ??= new FiltroUnidadesCultivo();
             var lista = new List<DatosEstadoHidrico>();
             string idTemporada = null;
             try {
@@ -140,11 +141,67 @@ namespace WebApi {
                     lUC = db.Fetch<string>(sql, args);
                 }
                 ViewBag.NTotal = lUC.Count;
-                lista = EstadoHidricoMaterializado.ObtenerLista(idTemporada, lUC.Take(100), fecha);
+
+                // Se cargan TODAS las de la temporada, no las 100 primeras: los filtros por
+                // columna y la ordenación tienen que ver la temporada entera, o filtrar por
+                // un cultivo que está en la unidad 400 no lo encontraría nunca. Sale barato
+                // porque lo guardado se lee de una sola consulta: 200 unidades en 13 ms.
+                lista = EstadoHidricoMaterializado.ObtenerLista(idTemporada, lUC, fecha);
+                lista = FiltraYOrdena(lista, filtro);
+                ViewBag.NFiltradas = lista.Count;
+                lista = lista.Take(200).ToList();
             } catch (Exception ex) { Log.Error("Panel/UnidadesCultivo", ex); TempData["error"] = ex.Message; }
             ViewBag.Buscar = buscar;
+            ViewBag.Filtro = filtro;
             ViewBag.IdTemporada = idTemporada;
             return View(lista);
+        }
+
+        /// <summary>
+        /// Aplica los filtros de columna y la ordenación pedidos desde la cabecera.
+        ///
+        /// Se hace en memoria y no en SQL a propósito: regante, cultivo, municipio y el estado
+        /// hídrico salen del JSON de `EstadoHidricoUC`, no de columnas consultables. Como la
+        /// lista de la temporada ya está cargada entera, ordenar y filtrar aquí no cuesta nada
+        /// y evita tener que mantener dos criterios distintos según por dónde se filtre.
+        /// </summary>
+        /// <param name="lista">Los estados de la temporada.</param>
+        /// <param name="f">Lo que ha pedido el usuario en la cabecera de la tabla.</param>
+        private static List<DatosEstadoHidrico> FiltraYOrdena(List<DatosEstadoHidrico> lista, FiltroUnidadesCultivo f) {
+            IEnumerable<DatosEstadoHidrico> q = lista;
+
+            bool Contiene(string valor, string patron) =>
+                string.IsNullOrWhiteSpace(patron) ||
+                (valor ?? "").Contains(patron.Trim(), StringComparison.OrdinalIgnoreCase);
+
+            q = q.Where(x => Contiene(x.IdUnidadCultivo, f.Unidad)
+                          && Contiene(x.Regante, f.Regante)
+                          && Contiene(x.Cultivo, f.Cultivo)
+                          && Contiene(x.Municipios, f.Municipio));
+
+            if (f.SuperficieMin != null) q = q.Where(x => (x.SuperficieM2 ?? 0) >= f.SuperficieMin.Value);
+            if (f.RiegoMin != null) q = q.Where(x => (x.SumaRiego ?? 0) >= f.RiegoMin.Value);
+            if (f.EstadoMax != null) q = q.Where(x => x.IndiceEstres <= f.EstadoMax.Value);
+
+            if (f.Incidencias == "si") q = q.Where(x => x.Incidencias != null && x.Incidencias.Count > 0);
+            else if (f.Incidencias == "no") q = q.Where(x => x.Incidencias == null || x.Incidencias.Count == 0);
+
+            // Sin orden pedido se respeta el de la consulta, que es por unidad de cultivo.
+            if (string.IsNullOrEmpty(f.Orden))
+                return q.ToList();
+
+            bool desc = f.Dir == "desc";
+            Func<DatosEstadoHidrico, object> clave = f.Orden switch {
+                "regante" => x => x.Regante,
+                "cultivo" => x => x.Cultivo,
+                "municipio" => x => x.Municipios,
+                "superficie" => x => x.SuperficieM2 ?? 0,
+                "riego" => x => x.SumaRiego ?? 0,
+                "estado" => x => x.IndiceEstres,
+                "incidencias" => x => x.Incidencias?.Count ?? 0,
+                _ => x => x.IdUnidadCultivo
+            };
+            return (desc ? q.OrderByDescending(clave) : q.OrderBy(clave)).ToList();
         }
 
         /// <summary>

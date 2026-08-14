@@ -1,6 +1,19 @@
 @model List<Models.DatosEstadoHidrico>
 @using DatosOptiaqua
-@{ ViewBag.Title = "Unidades de cultivo"; }
+@{
+    ViewBag.Title = "Unidades de cultivo";
+    var f = ViewBag.Filtro as FiltroUnidadesCultivo ?? new FiltroUnidadesCultivo();
+    string buscar = ViewBag.Buscar as string;
+
+    // Enlace de una cabecera: conserva lo ya filtrado y cambia solo la ordenación.
+    string Cabecera(string columna) {
+        var (orden, dir) = f.SiguienteOrden(columna);
+        var ruta = new Dictionary<string, string>(f.AParametros());
+        if (!string.IsNullOrEmpty(buscar)) ruta["buscar"] = buscar;
+        if (orden != null) { ruta["filtro.Orden"] = orden; ruta["filtro.Dir"] = dir; }
+        return Url.Action("UnidadesCultivo", "Panel", ruta);
+    }
+}
 
 <style>
     /* Escala de severidad: los tramos vienen de TipoEstresUmbral, la marca es el índice. */
@@ -9,71 +22,136 @@
     .oa-barra > u { position:absolute; top:0; bottom:0; width:3px; margin-left:-1px; background:#212529;
                     box-shadow:0 0 0 1px #fff; border-radius:1px; }
     .oa-fila { cursor:pointer; }
+    .oa-orden { color:inherit; text-decoration:none; white-space:nowrap; }
+    .oa-orden:hover { text-decoration:underline; }
+    /* Fila de filtros: los controles tienen que caber sin ensanchar la tabla. */
+    .oa-filtros input, .oa-filtros select { font-size:.78rem; padding:.15rem .35rem; height:auto; }
+    thead .oa-filtros th { padding-top:.2rem; padding-bottom:.35rem; }
 </style>
 
 <h2 class="mb-3">Unidades de cultivo <a class="btn btn-sm btn-outline-secondary ms-2" asp-controller="Home" asp-action="Index">&laquo; Cuadro de mando</a></h2>
 <partial name="_MensajesPanel" />
 
-<form method="get" class="row g-2 align-items-center mb-3">
-    <div class="col-auto">
-        <input type="search" name="buscar" value="@ViewBag.Buscar" class="form-control form-control-sm"
-               style="min-width:280px" placeholder="Unidad, regante, NIF, cultivo o parcela…" />
+<form method="get" id="formLista">
+    @* La búsqueda general sigue resolviéndose en SQL sobre toda la temporada; los filtros de
+       columna, en memoria sobre la lista ya cargada. Van en el mismo formulario para que se
+       apliquen a la vez y la URL quede enlazable. *@
+    <div class="row g-2 align-items-center mb-3">
+        <div class="col-auto">
+            <input type="search" name="buscar" value="@buscar" class="form-control form-control-sm"
+                   style="min-width:280px" placeholder="Unidad, regante, NIF, cultivo o parcela…" />
+        </div>
+        <div class="col-auto"><button class="btn btn-sm btn-primary">Buscar</button></div>
+        @if (!string.IsNullOrEmpty(buscar) || f.HayFiltro || !string.IsNullOrEmpty(f.Orden)) {
+            <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" asp-action="UnidadesCultivo">Quitar todo</a></div>
+        }
+        <div class="col-auto text-muted">
+            <small>
+                @{
+                    int total = ViewBag.NTotal ?? 0;
+                    int filtradas = ViewBag.NFiltradas ?? Model.Count;
+                }
+                Temporada <b>@ViewBag.IdTemporada</b> ·
+                @if (filtradas != total) { <text>@filtradas de @total unidades</text> } else { <text>@total unidades</text> }
+                @if (Model.Count < filtradas) { <text> · mostrando las @Model.Count primeras</text> }
+            </small>
+        </div>
     </div>
-    <div class="col-auto"><button class="btn btn-sm btn-primary">Buscar</button></div>
-    @if (!string.IsNullOrEmpty(ViewBag.Buscar as string)) {
-        <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" asp-action="UnidadesCultivo">Quitar filtro</a></div>
-    }
+
+    <input type="hidden" name="filtro.Orden" value="@f.Orden" />
+    <input type="hidden" name="filtro.Dir" value="@f.Dir" />
+
+    <table class="table table-hover table-sm align-middle">
+        <thead>
+            <tr>
+                <th title="Incidencias del cálculo"><a class="oa-orden" href="@Cabecera("incidencias")">&#9888;@f.Flecha("incidencias")</a></th>
+                <th><a class="oa-orden" href="@Cabecera("unidad")">Unidad@f.Flecha("unidad")</a></th>
+                <th><a class="oa-orden" href="@Cabecera("regante")">Regante@f.Flecha("regante")</a></th>
+                <th><a class="oa-orden" href="@Cabecera("cultivo")">Cultivo@f.Flecha("cultivo")</a></th>
+                <th><a class="oa-orden" href="@Cabecera("municipio")">Municipio@f.Flecha("municipio")</a></th>
+                <th class="text-end"><a class="oa-orden" href="@Cabecera("superficie")">Superficie (m²)@f.Flecha("superficie")</a></th>
+                <th class="text-end"><a class="oa-orden" href="@Cabecera("riego")">Riego (mm)@f.Flecha("riego")</a></th>
+                <th style="min-width:320px"><a class="oa-orden" href="@Cabecera("estado")">Estado hídrico@f.Flecha("estado")</a></th>
+            </tr>
+            <tr class="oa-filtros">
+                <th>
+                    <select name="filtro.Incidencias" class="form-select form-select-sm" title="Filtrar por incidencias">
+                        <option value="" selected="@(string.IsNullOrEmpty(f.Incidencias))">·</option>
+                        <option value="si" selected="@(f.Incidencias == "si")">⚠</option>
+                        <option value="no" selected="@(f.Incidencias == "no")">✓</option>
+                    </select>
+                </th>
+                <th><input name="filtro.Unidad" value="@f.Unidad" class="form-control form-control-sm" placeholder="contiene…" /></th>
+                <th><input name="filtro.Regante" value="@f.Regante" class="form-control form-control-sm" placeholder="contiene…" /></th>
+                <th><input name="filtro.Cultivo" value="@f.Cultivo" class="form-control form-control-sm" placeholder="contiene…" /></th>
+                <th><input name="filtro.Municipio" value="@f.Municipio" class="form-control form-control-sm" placeholder="contiene…" /></th>
+                <th><input name="filtro.SuperficieMin" value="@f.SuperficieMin" type="number" step="any" class="form-control form-control-sm text-end" placeholder="desde…" /></th>
+                <th><input name="filtro.RiegoMin" value="@f.RiegoMin" type="number" step="any" class="form-control form-control-sm text-end" placeholder="desde…" /></th>
+                <th>
+                    <input name="filtro.EstadoMax" value="@f.EstadoMax" type="number" step="any" class="form-control form-control-sm"
+                           style="max-width:11rem" placeholder="índice hasta… (lo más seco)" />
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var d in Model) {
+            var incidencias = d.Incidencias ?? new List<DatosOptiaqua.Incidencia>();
+            // Rojo SOLO cuando no hay cálculo. Todo lo demás —datos estimados, parámetros que
+            // faltan, límites aplicados— es ámbar: hay un número que enseñar y lo que procede es
+            // decir de qué se fía, no tacharlo.
+            var err = incidencias.Any(x => x.Gravedad == DatosOptiaqua.GravedadIncidencia.Error)
+                      || (d.Status != null && d.Status.StartsWith("ERROR"));
+            var aviso = !err && incidencias.Count > 0;
+            var ficha = Url.Action("UnidadCultivo", "Panel", new { id = d.IdUnidadCultivo });
+            <tr class="oa-fila @(err ? "table-danger" : aviso ? "table-warning" : "")"
+                onclick="location.href='@ficha'" title="Ver la ficha de @d.IdUnidadCultivo">
+                <td style="width:1.5rem" class="text-center">
+                    @if (err || incidencias.Count > 0) {
+                        var pista = incidencias.Count > 0
+                            ? incidencias[0].Mensaje + (incidencias.Count > 1 ? " (+" + (incidencias.Count - 1) + " incidencia(s) más)" : "")
+                            : d.Status;
+                        <span class="@(err ? "text-danger" : "text-warning")"
+                              style="font-size:1.05rem;cursor:help" title="@pista">@Html.Raw(err ? "&#9940;" : "&#9888;")</span>
+                    }
+                </td>
+                <td><a asp-action="UnidadCultivo" asp-route-id="@d.IdUnidadCultivo" onclick="event.stopPropagation()"><b>@d.IdUnidadCultivo</b></a></td>
+                <td>@d.Regante</td>
+                <td>@d.Cultivo</td>
+                <td>@d.Municipios</td>
+                <td class="text-end">@(d.SuperficieM2?.ToString("N0"))</td>
+                <td class="text-end">@(d.SumaRiego?.ToString("N1"))</td>
+                <td>
+                    @if (err) {
+                        <span class="text-danger" title="@d.Status">no se puede calcular</span>
+                    } else {
+                        <partial name="_BarraEstres" model="d" />
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
 </form>
 
-<p class="text-muted">
-    Temporada activa <b>@ViewBag.IdTemporada</b> — último estado hídrico calculado.
-    @(ViewBag.NTotal != null && (int)ViewBag.NTotal > 100 ? "Mostrando las primeras 100 de " + ViewBag.NTotal + "." : "")
-</p>
-
-<table class="table table-hover table-sm align-middle">
-    <thead><tr><th title="Incidencias del cálculo"></th><th>Unidad</th><th>Regante</th><th>Cultivo</th><th>Municipio</th><th class="text-end">Superficie (m²)</th><th class="text-end">Riego (mm)</th><th style="min-width:320px">Estado hídrico</th></tr></thead>
-    <tbody>
-    @foreach (var d in Model) {
-        var incidencias = d.Incidencias ?? new List<DatosOptiaqua.Incidencia>();
-        // Rojo SOLO cuando no hay cálculo. Todo lo demás —datos estimados, parámetros que
-        // faltan, límites aplicados— es ámbar: hay un número que enseñar y lo que procede es
-        // decir de qué se fía, no tacharlo.
-        var err = incidencias.Any(x => x.Gravedad == DatosOptiaqua.GravedadIncidencia.Error)
-                  || (d.Status != null && d.Status.StartsWith("ERROR"));
-        var aviso = !err && incidencias.Count > 0;
-        var ficha = Url.Action("UnidadCultivo", "Panel", new { id = d.IdUnidadCultivo });
-        <tr class="oa-fila @(err ? "table-danger" : aviso ? "table-warning" : "")"
-            onclick="location.href='@ficha'" title="Ver la ficha de @d.IdUnidadCultivo">
-            <td style="width:1.5rem" class="text-center">
-                @if (err || incidencias.Count > 0) {
-                    var pista = incidencias.Count > 0
-                        ? incidencias[0].Mensaje + (incidencias.Count > 1 ? " (+" + (incidencias.Count - 1) + " incidencia(s) más)" : "")
-                        : d.Status;
-                    <span class="@(err ? "text-danger" : "text-warning")"
-                          style="font-size:1.05rem;cursor:help" title="@pista">@Html.Raw(err ? "&#9940;" : "&#9888;")</span>
-                }
-            </td>
-            <td><a asp-action="UnidadCultivo" asp-route-id="@d.IdUnidadCultivo" onclick="event.stopPropagation()"><b>@d.IdUnidadCultivo</b></a></td>
-            <td>@d.Regante</td>
-            <td>@d.Cultivo</td>
-            <td>@d.Municipios</td>
-            <td class="text-end">@(d.SuperficieM2?.ToString("N0"))</td>
-            <td class="text-end">@(d.SumaRiego?.ToString("N1"))</td>
-            <td>
-                @if (err) {
-                    <span class="text-danger" title="@d.Status">no se puede calcular</span>
-                } else {
-                    <partial name="_BarraEstres" model="d" />
-                }
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
 @if (Model.Count == 0) {
     <p class="text-muted">
-        @(string.IsNullOrEmpty(ViewBag.Buscar as string)
+        @(string.IsNullOrEmpty(buscar) && !f.HayFiltro
             ? "No hay unidades de cultivo en la temporada activa."
-            : "Ninguna unidad de cultivo coincide con la búsqueda.")
+            : "Ninguna unidad de cultivo coincide con lo pedido.")
     </p>
+}
+
+@section scripts {
+<script>
+    // Los filtros se aplican al salir del control o al pulsar Intro, sin botón aparte: con
+    // ocho campos, obligar a buscar cada vez cansa. Se espera al 'change' y no al 'input'
+    // para no recargar en cada tecla.
+    (function () {
+        var formulario = document.getElementById('formLista');
+        if (!formulario) return;
+        formulario.querySelectorAll('.oa-filtros input, .oa-filtros select').forEach(function (campo) {
+            campo.addEventListener('change', function () { formulario.submit(); });
+        });
+    })();
+</script>
 }
