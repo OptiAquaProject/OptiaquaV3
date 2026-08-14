@@ -19,7 +19,10 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="menuPrincipal">
-                <ul class="navbar-nav">
+                @* align-items-center: los <li> se estiran a lo alto de la barra y el texto de
+                   .navbar-text queda pegado arriba, mientras que .nav-link se ve centrado por
+                   su propio relleno. Sin esto, "admin (admin)" no cuadra con "Salir". *@
+                <ul class="navbar-nav align-items-center">
                     <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Inicio</a></li>
                     @if (User.IsInRole("admin")) {
                         <li class="nav-item"><a class="nav-link" asp-controller="Panel" asp-action="Regantes">Regantes</a></li>
@@ -28,9 +31,9 @@
                         <li class="nav-item"><a class="nav-link" href="/swagger">API</a></li>
                     }
                 </ul>
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-center">
                     @if (User?.Identity != null && User.Identity.IsAuthenticated) {
-                        <li class="nav-item"><span class="navbar-text me-2">@User.Identity.Name (@(User.IsInRole("admin") ? "admin" : User.IsInRole("asesor") ? "gestor" : "usuario"))</span></li>
+                        <li class="nav-item"><span class="navbar-text py-0 me-2">@User.Identity.Name (@(User.IsInRole("admin") ? "admin" : User.IsInRole("asesor") ? "gestor" : "usuario"))</span></li>
                         <li class="nav-item"><a class="nav-link" asp-controller="Cuenta" asp-action="Logout">Salir</a></li>
                     } else {
                         <li class="nav-item"><a class="nav-link" asp-controller="Cuenta" asp-action="Login">Entrar</a></li>
