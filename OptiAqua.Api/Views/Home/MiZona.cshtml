@@ -25,17 +25,19 @@
         <thead><tr><th title="Incidencias del cálculo"></th><th>Unidad</th>@if (esGestor) { <th>Regante</th> }<th>Cultivo</th><th>Municipio</th><th>Superficie (m²)</th><th>Riego (mm)</th><th>Estado hídrico</th><th></th></tr></thead>
         <tbody>
         @foreach (var d in Model) {
-            var err = d.Status != null && d.Status.StartsWith("ERROR");
             var incidencias = d.Incidencias ?? new List<DatosOptiaqua.Incidencia>();
-            var graves = incidencias.Count(x => x.Gravedad == DatosOptiaqua.GravedadIncidencia.Error);
-            var aviso = incidencias.Count > 0;
+            // Rojo SOLO cuando no hay cálculo; el resto de incidencias van en ámbar.
+            var err = incidencias.Any(x => x.Gravedad == DatosOptiaqua.GravedadIncidencia.Error)
+                      || (d.Status != null && d.Status.StartsWith("ERROR"));
+            var aviso = !err && incidencias.Count > 0;
             <tr class="@(err ? "table-danger" : aviso ? "table-warning" : "")">
                 <td style="width:1.5rem" class="text-center">
                     @if (err || incidencias.Count > 0) {
-                        var pista = err ? d.Status
-                            : incidencias[0].Mensaje + (incidencias.Count > 1 ? " (+" + (incidencias.Count - 1) + " incidencia(s) más)" : "");
-                        <span class="@(err || graves > 0 ? "text-danger" : "text-warning")"
-                              style="font-size:1.05rem;cursor:help" title="@pista">&#9888;</span>
+                        var pista = incidencias.Count > 0
+                            ? incidencias[0].Mensaje + (incidencias.Count > 1 ? " (+" + (incidencias.Count - 1) + " incidencia(s) más)" : "")
+                            : d.Status;
+                        <span class="@(err ? "text-danger" : "text-warning")"
+                              style="font-size:1.05rem;cursor:help" title="@pista">@Html.Raw(err ? "&#9940;" : "&#9888;")</span>
                     }
                 </td>
                 <td><b>@d.IdUnidadCultivo</b></td>

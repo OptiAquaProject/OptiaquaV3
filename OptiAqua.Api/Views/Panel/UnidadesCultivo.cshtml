@@ -34,19 +34,23 @@
     <thead><tr><th title="Incidencias del cálculo"></th><th>Unidad</th><th>Regante</th><th>Cultivo</th><th>Municipio</th><th class="text-end">Superficie (m²)</th><th class="text-end">Riego (mm)</th><th style="min-width:320px">Estado hídrico</th></tr></thead>
     <tbody>
     @foreach (var d in Model) {
-        var err = d.Status != null && d.Status.StartsWith("ERROR");
         var incidencias = d.Incidencias ?? new List<DatosOptiaqua.Incidencia>();
-        var graves = incidencias.Count(x => x.Gravedad == DatosOptiaqua.GravedadIncidencia.Error);
-        var aviso = incidencias.Count > 0;
+        // Rojo SOLO cuando no hay cálculo. Todo lo demás —datos estimados, parámetros que
+        // faltan, límites aplicados— es ámbar: hay un número que enseñar y lo que procede es
+        // decir de qué se fía, no tacharlo.
+        var err = incidencias.Any(x => x.Gravedad == DatosOptiaqua.GravedadIncidencia.Error)
+                  || (d.Status != null && d.Status.StartsWith("ERROR"));
+        var aviso = !err && incidencias.Count > 0;
         var ficha = Url.Action("UnidadCultivo", "Panel", new { id = d.IdUnidadCultivo });
         <tr class="oa-fila @(err ? "table-danger" : aviso ? "table-warning" : "")"
             onclick="location.href='@ficha'" title="Ver la ficha de @d.IdUnidadCultivo">
             <td style="width:1.5rem" class="text-center">
                 @if (err || incidencias.Count > 0) {
-                    var pista = err ? d.Status
-                        : incidencias[0].Mensaje + (incidencias.Count > 1 ? " (+" + (incidencias.Count - 1) + " incidencia(s) más)" : "");
-                    <span class="@(err || graves > 0 ? "text-danger" : "text-warning")"
-                          style="font-size:1.05rem;cursor:help" title="@pista">&#9888;</span>
+                    var pista = incidencias.Count > 0
+                        ? incidencias[0].Mensaje + (incidencias.Count > 1 ? " (+" + (incidencias.Count - 1) + " incidencia(s) más)" : "")
+                        : d.Status;
+                    <span class="@(err ? "text-danger" : "text-warning")"
+                          style="font-size:1.05rem;cursor:help" title="@pista">@Html.Raw(err ? "&#9940;" : "&#9888;")</span>
                 }
             </td>
             <td><a asp-action="UnidadCultivo" asp-route-id="@d.IdUnidadCultivo" onclick="event.stopPropagation()"><b>@d.IdUnidadCultivo</b></a></td>

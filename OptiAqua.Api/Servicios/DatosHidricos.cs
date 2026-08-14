@@ -349,7 +349,9 @@
             string etapa = etapaBase0 >= 0 && etapaBase0 < UnidadCultivoCultivoEtapasList.Count
                 ? UnidadCultivoCultivoEtapasList[etapaBase0].Etapa
                 : "nº " + (etapaBase0 + 1);
-            Incidencias.Añade("PARAMETRO_AUSENTE", GravedadIncidencia.Error,
+            // Aviso y no Error: el cálculo sale adelante, con peor apoyo. Error se reserva
+            // para cuando NO hay resultado, que es lo único que se marca en rojo.
+            Incidencias.Añade("PARAMETRO_AUSENTE", GravedadIncidencia.Aviso,
                 $"Falta el parámetro '{parametro}' en la etapa '{etapa}': el crecimiento de esa " +
                 "etapa se calcula sin él y el resultado puede no tener sentido.");
             return null;

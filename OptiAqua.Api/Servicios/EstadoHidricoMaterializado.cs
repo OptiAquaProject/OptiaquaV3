@@ -2,6 +2,7 @@
     using Models;
     using Newtonsoft.Json;
     using System;
+    using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
     using System.Security.Cryptography;
@@ -99,10 +100,35 @@
                     if (calculado != null)
                         ret.Add(calculado);
                 } catch (Exception ex) {
-                    ret.Add(new DatosEstadoHidrico { IdUnidadCultivo = idUC, IdTemporada = idTemporada, Status = "ERROR: " + ex.Message });
+                    ret.Add(NoSePudoCalcular(idUC, idTemporada, ex.Message));
                 }
             }
             return ret;
+        }
+
+        /// <summary>
+        /// El estado de una unidad de cultivo que NO se ha podido calcular.
+        ///
+        /// Lleva su incidencia de gravedad Error —la única que la hay— para que las pantallas
+        /// no tengan que distinguir entre "falló" y "salió con avisos" mirando el texto de
+        /// Status: basta con preguntar si alguna incidencia impidió el cálculo.
+        /// </summary>
+        /// <param name="idUnidadCultivo">Unidad de cultivo.</param>
+        /// <param name="idTemporada">Temporada.</param>
+        /// <param name="motivo">Lo que dijo la excepción.</param>
+        public static DatosEstadoHidrico NoSePudoCalcular(string idUnidadCultivo, string idTemporada, string motivo) {
+            return new DatosEstadoHidrico {
+                IdUnidadCultivo = idUnidadCultivo,
+                IdTemporada = idTemporada,
+                Status = "ERROR: " + motivo,
+                Incidencias = new List<Incidencia> {
+                    new Incidencia {
+                        Codigo = "CALCULO_FALLIDO",
+                        Gravedad = GravedadIncidencia.Error,
+                        Mensaje = "No se ha podido calcular el estado hídrico: " + motivo
+                    }
+                }
+            };
         }
 
         /// <summary>

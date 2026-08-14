@@ -69,18 +69,18 @@
 
 @* ---------------------------------------------------------------- incidencias *@
 @if (Model.Estado?.Incidencias != null && Model.Estado.Incidencias.Count > 0) {
-    var graves = Model.Estado.Incidencias.Count(x => x.Gravedad == GravedadIncidencia.Error);
-    <div class="card mb-3 @(graves > 0 ? "border-danger" : "border-warning")">
+    var impideCalculo = Model.Estado.Incidencias.Any(x => x.Gravedad == GravedadIncidencia.Error);
+    <div class="card mb-3 @(impideCalculo ? "border-danger" : "border-warning")">
         <div class="card-body">
             <h5 class="mb-2">
                 Incidencias del cálculo
-                <small class="text-muted">@Model.Estado.Incidencias.Count en total@(graves > 0 ? ", " + graves + " que puede(n) invalidar el resultado" : "")</small>
+                <small class="text-muted">@Model.Estado.Incidencias.Count en total@(impideCalculo ? " — no se ha podido calcular" : "")</small>
             </h5>
             <ul class="list-unstyled mb-0">
                 @foreach (var inc in Model.Estado.Incidencias) {
                     var esError = inc.Gravedad == GravedadIncidencia.Error;
                     <li class="d-flex gap-2 mb-2">
-                        <span class="@(esError ? "text-danger" : "text-warning")" style="font-size:1.1rem;line-height:1.2">&#9888;</span>
+                        <span class="@(esError ? "text-danger" : "text-warning")" style="font-size:1.1rem;line-height:1.2">@Html.Raw(esError ? "&#9940;" : "&#9888;")</span>
                         <span>
                             @inc.Mensaje
                             <br /><small class="text-muted">

@@ -3,11 +3,19 @@
     using System.Collections.Generic;
     using System.Linq;
 
-    /// <summary>Gravedad de una incidencia del cálculo.</summary>
+    /// <summary>
+    /// Gravedad de una incidencia del cálculo.
+    ///
+    /// La frontera es UNA y muy concreta: si hay resultado o no lo hay. Todo lo que el
+    /// cálculo consigue sortear —datos estimados, parámetros que faltan, límites que se
+    /// aplican— es Aviso, por gordo que sea, porque hay un número que enseñar y lo que
+    /// procede es decir de qué se fía. Error se reserva para cuando NO se ha podido
+    /// calcular; es lo único que se marca en rojo.
+    /// </summary>
     public enum GravedadIncidencia {
-        /// <summary>Merece saberse, pero el resultado sirve.</summary>
+        /// <summary>Hay resultado, pero conviene saber sobre qué se apoya.</summary>
         Aviso = 0,
-        /// <summary>El resultado puede estar equivocado; hay que mirarlo.</summary>
+        /// <summary>No hay resultado: la incidencia ha impedido el cálculo.</summary>
         Error = 1
     }
 
