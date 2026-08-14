@@ -12,5 +12,8 @@ OptiAqua.Api/App_Data/
 # Visual Studio
 .vs/
 
-# Secretos locales (van en user-secrets, nunca aquí)
+# Secretos locales. El repositorio es PÚBLICO: la cadena de conexión y la clave JWT de
+# cada máquina van aquí o en user-secrets, nunca en appsettings.json.
+# La plantilla appsettings.local.ejemplo.json sí se versiona, porque no lleva valores.
+appsettings.local.json
 appsettings.*.local.json

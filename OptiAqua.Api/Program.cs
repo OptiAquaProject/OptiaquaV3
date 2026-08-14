@@ -34,12 +34,24 @@ try {
     // -----------------------------------------------------------------------------------
     // Configuración
     // -----------------------------------------------------------------------------------
+    // Sobrescritura local: `appsettings.local.json`. Es donde va la cadena de conexión de la
+    // máquina de cada uno para depurar, sin tener que acordarse de los secretos de usuario ni
+    // exportar variables. Sin entorno en el nombre a propósito: vale igual arrancando desde
+    // Visual Studio (Development) que con `dotnet run` a secas (Production). Se añade el
+    // ÚLTIMO para que mande sobre todo lo demás: si el fichero existe es porque alguien lo ha
+    // puesto ahí a mano, y esa es la intención más explícita que hay.
+    //
+    // EL REPOSITORIO ES PÚBLICO y este fichero lleva credenciales: no puede entrar en git
+    // nunca. Está en .gitignore, y hay un ejemplo sin secretos en appsettings.local.ejemplo.json.
+    builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
+
     var config = builder.Configuration;
     string cadenaConexion = config.GetConnectionString("OptiAqua");
     if (string.IsNullOrWhiteSpace(cadenaConexion))
         throw new InvalidOperationException(
-            "No hay cadena de conexión. Defina ConnectionStrings:OptiAqua en appsettings, " +
-            "en variables de entorno o en los secretos de usuario.");
+            "No hay cadena de conexión. Defina ConnectionStrings:OptiAqua en " +
+            "appsettings.local.json (copie appsettings.local.ejemplo.json), en variables de " +
+            "entorno o en los secretos de usuario.");
 
     string jwtClave = config["Jwt:ClaveSecreta"];
     if (string.IsNullOrWhiteSpace(jwtClave))

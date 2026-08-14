@@ -79,15 +79,18 @@ dotnet build
 ```
 
 **Los secretos no están en el repositorio y la aplicación se niega a arrancar sin ellos.**
-Hay que definir la cadena de conexión y la clave de firma de los JWT en los secretos de
-usuario o en variables de entorno:
+Para depurar, copia la plantilla y pon tus valores:
 
 ```bash
-dotnet user-secrets set "ConnectionStrings:OptiAqua" "Data Source=...;Initial Catalog=OptiAquaV2;..." --project OptiAqua.Api
-dotnet user-secrets set "Jwt:ClaveSecreta" "<una clave larga y aleatoria>" --project OptiAqua.Api
+cp OptiAqua.Api/appsettings.local.ejemplo.json OptiAqua.Api/appsettings.local.json
 ```
 
-Las variables equivalentes son `ConnectionStrings__OptiAqua` y `Jwt__ClaveSecreta`.
+`appsettings.local.json` está en `.gitignore`, no se copia al publicar y manda sobre todo
+lo demás. Es lo único que hace falta para arrancar en local.
+
+En un servidor, por variables de entorno: `ConnectionStrings__OptiAqua` y
+`Jwt__ClaveSecreta`. También valen los secretos de usuario
+(`dotnet user-secrets set … --project OptiAqua.Api`).
 
 ```bash
 dotnet run --project OptiAqua.Api
