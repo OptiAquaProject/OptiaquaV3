@@ -39,7 +39,14 @@
                 <div class="col-md-5">
                     <h5>Estado hídrico</h5>
                     <partial name="_BarraEstres" model="e" />
-                    @if (aviso) { <div class="mt-2"><span class="badge bg-warning text-dark">@e.Status</span></div> }
+                    @* Separado de la descripción del estrés: pegado quedaba a la misma altura
+                       que la fila "Siembra" de la tabla de al lado y se leían como si fueran
+                       lo mismo. Y que el texto pueda partirse en varias líneas, que es largo. *@
+                    @if (aviso) {
+                        <div class="mt-4">
+                            <span class="badge bg-warning text-dark text-wrap text-start" style="white-space:normal">@e.Status</span>
+                        </div>
+                    }
                 </div>
                 <div class="col-md-7">
                     <table class="table table-sm mb-0">
