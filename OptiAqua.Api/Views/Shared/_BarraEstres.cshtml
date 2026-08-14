@@ -1,30 +1,48 @@
 @model Models.DatosEstadoHidrico
 @using DatosOptiaqua
+@using System.Globalization
 @*
-    Barra de color del estado hídrico.
+    Barra de severidad del estado hídrico.
 
-    Antes esto era una insignia con `style="background:@Model.ColorEstres"`, y los colores de
-    TipoEstresUmbral vienen SIN almohadilla ("00CD00"): el navegador descartaba la regla y
-    quedaba texto blanco sobre fondo transparente, prácticamente invisible. Ahora el color
-    pasa por Colores.Css.
+    Los tramos y sus colores salen de `TipoEstresUmbral`, que es donde están definidos por
+    tipo de estrés; aquí no se inventa ninguna paleta. Se pinta la escala ENTERA —del punto
+    de marchitez al exceso de agua— y una marca donde cae el índice: así se ve no solo cómo
+    está, sino cuánto le falta para el siguiente tramo.
 
-    El relleno posiciona el índice dentro del recorrido -1 (punto de marchitez) a 1,2 (exceso
-    de agua), que es lo que cubren los umbrales de las dos escalas. El número va FUERA de la
-    barra a propósito: dentro habría que adivinar si el texto se lee sobre el relleno o sobre
-    el hueco, según lo llena que esté.
+    Ojo con los colores de la base: vienen SIN almohadilla ("00CD00"). Metidos tal cual en un
+    style el navegador los descarta y el fondo queda transparente; por eso pasan por
+    Colores.Css. Ese era el motivo de que la insignia saliera prácticamente invisible.
+
+    Si no se conoce la escala (dato antiguo sin IdTipoEstres, o umbrales que no cargan), se
+    cae con elegancia a una barra de un solo color con el del tramo actual.
 *@
 @{
-    const double minimo = -1.0;
-    const double maximo = 1.2;
-    double porcentaje = (Model.IndiceEstres - minimo) / (maximo - minimo) * 100.0;
-    if (porcentaje < 2) { porcentaje = 2; }
-    if (porcentaje > 100) { porcentaje = 100; }
-    string ancho = porcentaje.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
-    string fondo = Colores.Css(Model.ColorEstres);
+    var tramos = EscalaEstres.Tramos(Model.IdTipoEstres);
+    double minimo = EscalaEstres.Minimo;
+    double maximo = tramos.Count > 0 ? tramos[tramos.Count - 1].Hasta : 1.2;
+    double recorrido = maximo - minimo;
+    if (recorrido <= 0) { recorrido = 1; }
+
+    double Pos(double v) {
+        double p = (v - minimo) / recorrido * 100.0;
+        return p < 0 ? 0 : (p > 100 ? 100 : p);
+    }
+    string Pc(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+
+    double marca = Pos(Model.IndiceEstres);
 }
 <div class="d-flex align-items-center gap-2">
     <span class="oa-barra" title="@Model.DescripcionEstres">
-        <i style="width:@ancho%;background:@fondo"></i>
+        @if (tramos.Count > 0) {
+            @foreach (var t in tramos) {
+                var izq = Pos(t.Desde);
+                var ancho = Pos(t.Hasta) - izq;
+                <i style="left:@Pc(izq)%;width:@Pc(ancho)%;background:@t.Color" title="@t.Descripcion"></i>
+            }
+        } else {
+            <i style="left:0;width:100%;background:@Colores.Css(Model.ColorEstres)"></i>
+        }
+        <u style="left:@Pc(marca)%"></u>
     </span>
     <span class="fw-semibold" style="min-width:2.6rem">@Model.IndiceEstres.ToString("N2")</span>
 </div>

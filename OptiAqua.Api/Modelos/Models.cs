@@ -415,8 +415,14 @@ namespace Models {
         public string MensajeEstres { set; get; }
         public string DescripcionEstres { set; get; }
         public string ColorEstres { set; get; }
+        /// <summary>
+        /// Escala de estrés que le toca a la etapa en curso ("aDemanda", "Deficitario"…).
+        /// Con ella la pantalla pinta TODOS los tramos de severidad con sus colores y sus
+        /// umbrales, y no solo el color del tramo en el que está ahora mismo.
+        /// </summary>
+        public string IdTipoEstres { set; get; }
 
-        public string GeoLocJson { set; get; }  // List<GeoLocParcela> ->Json 
+        public string GeoLocJson { set; get; }  // List<GeoLocParcela> ->Json
         public string HidranteTomaJson { set; get; }
         public double Consumo { get; set; }
         public double AguaTotalPerdidaDrenaje { get; set; }

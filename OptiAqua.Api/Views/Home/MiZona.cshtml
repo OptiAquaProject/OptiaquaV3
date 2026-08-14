@@ -1,7 +1,10 @@
 @model List<Models.DatosEstadoHidrico>
 <style>
-    .oa-barra { position:relative; height:1.15rem; background:#f1f3f5; border-radius:.25rem; overflow:hidden; min-width:120px; }
-    .oa-barra > i { position:absolute; top:0; bottom:0; left:0; display:block; }
+    /* Escala de severidad: los tramos vienen de TipoEstresUmbral, la marca es el índice. */
+    .oa-barra { position:relative; height:1.15rem; background:#f1f3f5; border-radius:.25rem; overflow:hidden; min-width:150px; }
+    .oa-barra > i { position:absolute; top:0; bottom:0; display:block; }
+    .oa-barra > u { position:absolute; top:0; bottom:0; width:3px; margin-left:-1px; background:#212529;
+                    box-shadow:0 0 0 1px #fff; border-radius:1px; }
 </style>
 @{
     ViewBag.Title = "Mis unidades de cultivo";

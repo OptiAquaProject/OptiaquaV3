@@ -434,6 +434,8 @@
                 DescripcionEstres = linBalAFecha.DescripcionEstres,
                 ColorEstres = linBalAFecha.ColorEstres,
                 MensajeEstres = linBalAFecha.MensajeEstres,
+                // La escala que le toca a la etapa en curso, para poder pintar los tramos.
+                IdTipoEstres = unidadCultivoDatosHidricos.UnidadCultivoCultivoEtapasList[linBalAFecha.NumeroEtapaDesarrollo - 1].IdTipoEstres,
                 NumCambiosDeEtapaPendientesDeConfirmar = NumCambiosDeEtapaPendientesDeConfirmar(fecha),
                 // Un balance con días estimados por medias del mes no puede presentarse igual
                 // que uno con datos reales: la ficha sale igual de convincente y no lo es.
