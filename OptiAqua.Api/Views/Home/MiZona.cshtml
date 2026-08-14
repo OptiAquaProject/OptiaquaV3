@@ -22,12 +22,22 @@
     <div class="alert alert-info">No hay unidades de cultivo asociadas para la temporada activa.</div>
 } else {
     <table class="table table-hover align-middle">
-        <thead><tr><th>Unidad</th>@if (esGestor) { <th>Regante</th> }<th>Cultivo</th><th>Municipio</th><th>Superficie (m²)</th><th>Riego (mm)</th><th>Estado hídrico</th><th></th></tr></thead>
+        <thead><tr><th title="Incidencias del cálculo"></th><th>Unidad</th>@if (esGestor) { <th>Regante</th> }<th>Cultivo</th><th>Municipio</th><th>Superficie (m²)</th><th>Riego (mm)</th><th>Estado hídrico</th><th></th></tr></thead>
         <tbody>
         @foreach (var d in Model) {
             var err = d.Status != null && d.Status.StartsWith("ERROR");
-            var aviso = d.Status != null && d.Status.StartsWith("AVISO");
+            var incidencias = d.Incidencias ?? new List<DatosOptiaqua.Incidencia>();
+            var graves = incidencias.Count(x => x.Gravedad == DatosOptiaqua.GravedadIncidencia.Error);
+            var aviso = incidencias.Count > 0;
             <tr class="@(err ? "table-danger" : aviso ? "table-warning" : "")">
+                <td style="width:1.5rem" class="text-center">
+                    @if (err || incidencias.Count > 0) {
+                        var pista = err ? d.Status
+                            : incidencias[0].Mensaje + (incidencias.Count > 1 ? " (+" + (incidencias.Count - 1) + " incidencia(s) más)" : "");
+                        <span class="@(err || graves > 0 ? "text-danger" : "text-warning")"
+                              style="font-size:1.05rem;cursor:help" title="@pista">&#9888;</span>
+                    }
+                </td>
                 <td><b>@d.IdUnidadCultivo</b></td>
                 @if (esGestor) { <td>@d.Regante</td> }
                 <td>@d.Cultivo</td>
@@ -39,7 +49,6 @@
                         <span class="text-danger" title="@d.Status">no disponible</span>
                     } else {
                         <partial name="_BarraEstres" model="d" />
-                        @if (aviso) { <span class="badge bg-warning text-dark ms-1" title="@d.Status">estimado</span> }
                     }
                 </td>
                 <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="/api/DatosHidricos/@d.IdUnidadCultivo/@(d.Fecha.ToString("yyyy-MM-dd"))" target="_blank">Detalle</a></td>

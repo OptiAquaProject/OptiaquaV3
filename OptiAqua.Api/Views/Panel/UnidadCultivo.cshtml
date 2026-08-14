@@ -60,6 +60,39 @@
     <div class="alert alert-danger">No se pudo calcular el estado hídrico: @Model.ErrorEstado</div>
 }
 
+@* ---------------------------------------------------------------- incidencias *@
+@if (Model.Estado?.Incidencias != null && Model.Estado.Incidencias.Count > 0) {
+    var graves = Model.Estado.Incidencias.Count(x => x.Gravedad == GravedadIncidencia.Error);
+    <div class="card mb-3 @(graves > 0 ? "border-danger" : "border-warning")">
+        <div class="card-body">
+            <h5 class="mb-2">
+                Incidencias del cálculo
+                <small class="text-muted">@Model.Estado.Incidencias.Count en total@(graves > 0 ? ", " + graves + " que puede(n) invalidar el resultado" : "")</small>
+            </h5>
+            <ul class="list-unstyled mb-0">
+                @foreach (var inc in Model.Estado.Incidencias) {
+                    var esError = inc.Gravedad == GravedadIncidencia.Error;
+                    <li class="d-flex gap-2 mb-2">
+                        <span class="@(esError ? "text-danger" : "text-warning")" style="font-size:1.1rem;line-height:1.2">&#9888;</span>
+                        <span>
+                            @inc.Mensaje
+                            <br /><small class="text-muted">
+                                @inc.Codigo@(inc.Desde != null ? " · del " + inc.Desde.Value.ToString("dd/MM/yyyy") + " al " + inc.Hasta.Value.ToString("dd/MM/yyyy") : "")
+                            </small>
+                        </span>
+                    </li>
+                }
+            </ul>
+            <p class="text-muted mb-0 mt-2"><small>
+                El cálculo se completa siempre que puede, apañando lo que falta. Esto es lo que ha
+                tenido que apañar: son los puntos donde el resultado se apoya en estimaciones.
+            </small></p>
+        </div>
+    </div>
+} else if (Model.Estado != null) {
+    <p class="text-success mb-3"><small>&#10003; El cálculo se ha hecho con todos los datos, sin incidencias.</small></p>
+}
+
 @* ---------------------------------------------------------------- gráfico *@
 <div class="card mb-3">
     <div class="card-body">
@@ -215,16 +248,14 @@
                     <div id="mapaParcelas" style="height:380px;border-radius:.375rem"
                          data-geojson="@Url.Action("ParcelasGeoJson", "Panel", new { id = Model.IdUnidadCultivo })"
                          data-lat="@lat" data-lon="@lon"></div>
-                    @* El visor de SIGPAC NO entiende lat/lng/zoom: lee x, y, srid y level, y
-                       transforma desde el srid que se le indique. Con srid=4326, x es la
-                       longitud e y la latitud, en ese orden. Comprobado contra el propio
-                       visor: pasándole x=-2.8194&y=42.5465 responde 42º 32' 47,44" N,
-                       2º 49' 9,84" W, que son esas mismas coordenadas. *@
-                    <p class="mt-2 mb-0">
-                        <small class="text-muted">Centro @lat, @lon</small>
-                        <a class="btn btn-sm btn-outline-secondary ms-2" target="_blank" rel="noopener"
-                           href="https://sigpac.mapa.gob.es/fega/visor/?x=@lon&amp;y=@lat&amp;srid=4326&amp;level=17">Abrir en SIGPAC</a>
-                    </p>
+                    @* Aquí había un enlace al visor de SIGPAC. Se quita porque el visor está
+                       fallando: sirve su cfg.js con un 404 y su startapp.js vacío, así que no
+                       llega a registrar sus componentes y se queda cargando indefinidamente.
+                       No es cosa de la URL —comprobada contra el propio visor cuando aún
+                       funcionaba: ?x={lon}&y={lat}&srid=4326&level=17—, así que se puede
+                       reponer cuando lo arreglen. El mapa de arriba no depende de ellos: la
+                       ortofoto viene del IGN. *@
+                    <p class="mt-2 mb-0"><small class="text-muted">Centro @lat, @lon</small></p>
                 }
                 @if (Model.Parcelas.Count > 0) {
                     <table class="table table-sm mt-3 mb-0">

@@ -269,6 +269,37 @@
         }
 
         /// <summary>
+        /// Incidencias que solo se ven con el balance ya terminado, y que por tanto no puede
+        /// anotar quien carga los datos.
+        /// </summary>
+        /// <param name="fecha">Día para el que se ha pedido el estado.</param>
+        private void AnotaIncidenciasDelBalance(DateTime fecha) {
+            var incidencias = unidadCultivoDatosHidricos.Incidencias;
+
+            // Si se pregunta por el día de hoy y el balance se queda corto, lo que se enseña
+            // no es de hoy aunque lo parezca. Solo se avisa cuando la pregunta es por el
+            // presente: en una temporada de 2019 es obvio que el balance acaba en 2019, y
+            // decirlo en las 1.262 unidades de las temporadas cerradas sería puro ruido.
+            var ultima = LineasBalance.LastOrDefault()?.Fecha;
+            if (ultima != null && fecha.Date >= DateTime.Today.AddDays(-1) && ultima.Value.Date < DateTime.Today.AddDays(-1))
+                incidencias.Añade("BALANCE_NO_LLEGA_A_HOY", GravedadIncidencia.Aviso,
+                    $"El balance termina el {ultima:dd/MM/yyyy}: el ciclo del cultivo acabó antes de ayer, " +
+                    "así que el estado que se muestra es el de ese día, no el de hoy.");
+
+            int pendientes = NumCambiosDeEtapaPendientesDeConfirmar(fecha);
+            if (pendientes > 0)
+                incidencias.Añade("ETAPAS_SIN_CONFIRMAR", GravedadIncidencia.Aviso,
+                    $"{pendientes} cambio(s) de etapa sin confirmar: las fechas las ha estimado el cálculo " +
+                    "y nadie las ha comprobado sobre el terreno.");
+
+            var lin = LineasBalance.Find(x => x.Fecha == fecha) ?? LineasBalance.LastOrDefault();
+            if (lin != null && lin.CoeficienteEstresHidrico == 0)
+                incidencias.Añade("SUELO_AGOTADO", GravedadIncidencia.Aviso,
+                    "El suelo ha llegado al punto de marchitez: el cultivo ya no puede extraer agua, " +
+                    "así que el plazo hasta el próximo riego se da como 0 (regar ya).");
+        }
+
+        /// <summary>
         /// Tope de días que se muestran en "regar en N días". Por encima, la cifra no dice
         /// nada útil —el cultivo consume tan poco que el plazo se va a meses— y además invita
         /// a leerla como una previsión, que no lo es: sale de extrapolar el consumo de los
@@ -437,16 +468,22 @@
                 // La escala que le toca a la etapa en curso, para poder pintar los tramos.
                 IdTipoEstres = unidadCultivoDatosHidricos.UnidadCultivoCultivoEtapasList[linBalAFecha.NumeroEtapaDesarrollo - 1].IdTipoEstres,
                 NumCambiosDeEtapaPendientesDeConfirmar = NumCambiosDeEtapaPendientesDeConfirmar(fecha),
-                // Un balance con días estimados por medias del mes no puede presentarse igual
-                // que uno con datos reales: la ficha sale igual de convincente y no lo es.
-                // "AVISO" y no "ERROR" a propósito, que las cifras siguen valiendo como
-                // orientación; las vistas distinguen los dos por el prefijo.
-                Status = unidadCultivoDatosHidricos.DiasSinClima.Count == 0
-                    ? "OK"
-                    : "AVISO: " + unidadCultivoDatosHidricos.DiasSinClima.Count + " día(s) del balance sin datos de la estación,"
-                      + " estimados con las medias del mes (el más reciente, "
-                      + unidadCultivoDatosHidricos.DiasSinClima.Max().ToString("dd/MM/yyyy") + ")",
             };
+
+            // Incidencias del cálculo. Un balance apañado con estimaciones no puede
+            // presentarse igual que uno con datos completos: la ficha sale igual de
+            // convincente y no lo es.
+            AnotaIncidenciasDelBalance(fecha);
+            ret.Incidencias = unidadCultivoDatosHidricos.Incidencias.Resumen();
+
+            // Status se conserva para no romper a quien ya lo mira, y sigue siendo "AVISO"
+            // aunque alguna incidencia sea grave: "ERROR:" lo reservan los llamadores para
+            // cuando NO hay resultado, y las vistas lo usan para tachar la fila. Aquí sí hay
+            // resultado; lo que la incidencia dice es cuánto fiarse de él.
+            ret.Status = ret.Incidencias.Count == 0
+                ? "OK"
+                : "AVISO: " + ret.Incidencias[0].Mensaje
+                  + (ret.Incidencias.Count > 1 ? " (+" + (ret.Incidencias.Count - 1) + " más)" : "");
             return ret;
         }
 

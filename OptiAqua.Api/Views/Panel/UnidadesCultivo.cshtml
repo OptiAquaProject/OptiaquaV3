@@ -31,14 +31,24 @@
 </p>
 
 <table class="table table-hover table-sm align-middle">
-    <thead><tr><th>Unidad</th><th>Regante</th><th>Cultivo</th><th>Municipio</th><th class="text-end">Superficie (m²)</th><th class="text-end">Riego (mm)</th><th style="min-width:320px">Estado hídrico</th></tr></thead>
+    <thead><tr><th title="Incidencias del cálculo"></th><th>Unidad</th><th>Regante</th><th>Cultivo</th><th>Municipio</th><th class="text-end">Superficie (m²)</th><th class="text-end">Riego (mm)</th><th style="min-width:320px">Estado hídrico</th></tr></thead>
     <tbody>
     @foreach (var d in Model) {
         var err = d.Status != null && d.Status.StartsWith("ERROR");
-        var aviso = d.Status != null && d.Status.StartsWith("AVISO");
+        var incidencias = d.Incidencias ?? new List<DatosOptiaqua.Incidencia>();
+        var graves = incidencias.Count(x => x.Gravedad == DatosOptiaqua.GravedadIncidencia.Error);
+        var aviso = incidencias.Count > 0;
         var ficha = Url.Action("UnidadCultivo", "Panel", new { id = d.IdUnidadCultivo });
         <tr class="oa-fila @(err ? "table-danger" : aviso ? "table-warning" : "")"
             onclick="location.href='@ficha'" title="Ver la ficha de @d.IdUnidadCultivo">
+            <td style="width:1.5rem" class="text-center">
+                @if (err || incidencias.Count > 0) {
+                    var pista = err ? d.Status
+                        : incidencias[0].Mensaje + (incidencias.Count > 1 ? " (+" + (incidencias.Count - 1) + " incidencia(s) más)" : "");
+                    <span class="@(err || graves > 0 ? "text-danger" : "text-warning")"
+                          style="font-size:1.05rem;cursor:help" title="@pista">&#9888;</span>
+                }
+            </td>
             <td><a asp-action="UnidadCultivo" asp-route-id="@d.IdUnidadCultivo" onclick="event.stopPropagation()"><b>@d.IdUnidadCultivo</b></a></td>
             <td>@d.Regante</td>
             <td>@d.Cultivo</td>
@@ -50,7 +60,6 @@
                     <span class="text-danger" title="@d.Status">no se puede calcular</span>
                 } else {
                     <partial name="_BarraEstres" model="d" />
-                    @if (aviso) { <span class="badge bg-warning text-dark ms-1" title="@d.Status">estimado</span> }
                 }
             </td>
         </tr>

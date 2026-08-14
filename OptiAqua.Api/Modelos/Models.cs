@@ -422,6 +422,16 @@ namespace Models {
         /// </summary>
         public string IdTipoEstres { set; get; }
 
+        /// <summary>
+        /// Lo que ha pasado al calcular y quien lea esto debería saber: días estimados por
+        /// falta de clima, parámetros que faltan, límites aplicados. Vacía si todo fue bien.
+        ///
+        /// La aplicación está hecha para seguir adelante siempre que pueda, y eso tiene una
+        /// contrapartida: un resultado apañado con estimaciones sale con la misma pinta que
+        /// uno con datos completos. Esta lista es lo que rompe esa igualdad.
+        /// </summary>
+        public List<DatosOptiaqua.Incidencia> Incidencias { set; get; } = new List<DatosOptiaqua.Incidencia>();
+
         public string GeoLocJson { set; get; }  // List<GeoLocParcela> ->Json
         public string HidranteTomaJson { set; get; }
         public double Consumo { get; set; }

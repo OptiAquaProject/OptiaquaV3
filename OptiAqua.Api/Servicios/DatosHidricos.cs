@@ -317,6 +317,18 @@
             if (lUCSuelo == null || lUCSuelo.Count == 0)
                 throw new Exception("No se ha definido suelo para la unidad de Cultivo:" + idUnidadCultivo);
 
+            // La raíz se mide en METROS y el suelo en centímetros. Si la raíz del cultivo
+            // llega más hondo de lo que se ha medido el suelo, el agua disponible se calcula
+            // solo hasta donde hay dato: no se extrapola. Se avisa porque cambia el resultado
+            // —en viña llegó a ser un 29% menos de agua disponible— y no es un fallo, es una
+            // decisión: el suelo por debajo de lo medido no se inventa.
+            double sueloCm = lUCSuelo.Max(x => x.ProfundidadCM);
+            double raizCm = CultivoProfRaizMax * 100.0;
+            if (raizCm > sueloCm + 0.5)
+                Incidencias.Añade("RAIZ_SUPERA_SUELO", GravedadIncidencia.Aviso,
+                    $"La raíz del cultivo llega a {raizCm:N0} cm y el suelo está medido hasta " +
+                    $"{sueloCm:N0} cm: el agua disponible se calcula solo hasta esa profundidad.");
+
             riegoTipo = DB.RiegoTipo(unidadCultivoCultivo.IdTipoRiego);
 
             DateTime fechaSiembra = FechaSiembra();
@@ -331,6 +343,15 @@
             // Con '>=' y etapaBase0==Count se accedía a ParametrosEtapas[Count] -> excepción.
             if (ParametrosEtapas.Count > etapaBase0 && ParametrosEtapas[etapaBase0].TryGetValue(parametro, out var valor))
                 return valor;
+            // Quien llama sustituye el hueco por double.MaxValue, y en una exponencial eso da
+            // 0 sin protestar: la curva de crecimiento se queda plana y nadie se entera. Que
+            // al menos quede dicho de qué etapa y qué parámetro se trata.
+            string etapa = etapaBase0 >= 0 && etapaBase0 < UnidadCultivoCultivoEtapasList.Count
+                ? UnidadCultivoCultivoEtapasList[etapaBase0].Etapa
+                : "nº " + (etapaBase0 + 1);
+            Incidencias.Añade("PARAMETRO_AUSENTE", GravedadIncidencia.Error,
+                $"Falta el parámetro '{parametro}' en la etapa '{etapa}': el crecimiento de esa " +
+                "etapa se calcula sin él y el resultado puede no tener sentido.");
             return null;
         }
 
@@ -430,6 +451,12 @@
         public IReadOnlyCollection<DateTime> DiasSinClima => diasSinClima;
 
         /// <summary>
+        /// Lo que ha ido pasando durante el cálculo y merece contarse: días estimados, datos
+        /// que faltan, límites que se han tenido que aplicar. Se vuelca en el estado hídrico.
+        /// </summary>
+        public RegistroIncidencias Incidencias { get; } = new RegistroIncidencias();
+
+        /// <summary>
         /// Valor de una variable climática a una fecha, con dos respaldos encadenados:
         /// el promedio de los tres días anteriores QUE TENGAN dato y, si tampoco hay ninguno,
         /// la media del mes de <see cref="ClimaPorDefecto"/>.
@@ -479,8 +506,18 @@
         /// </summary>
         private double ValorClimatico(DateTime fecha, Func<DatoClimatico, double> selector, Func<int, double> porDefectoDelMes) {
             double valor = ValorClimaticoConRespaldo(lDatosClimaticos, fecha, selector, porDefectoDelMes, out bool estimado);
-            if (estimado)
+            if (estimado) {
                 diasSinClima.Add(fecha.Date);
+                Incidencias.AñadeDia("CLIMA_ESTIMADO", GravedadIncidencia.Aviso,
+                    "Sin datos de la estación: {0} día(s) calculados con las medias del mes ({1}). " +
+                    "La lluvia de esos días se toma como 0, nunca se estima.", fecha);
+            } else if (lDatosClimaticos?.Find(x => x.Fecha == fecha) == null) {
+                // Hay dato en los tres días anteriores, así que el hueco se rellena con su
+                // media. Es mucho mejor que la media del mes, pero sigue sin ser el dato.
+                Incidencias.AñadeDia("CLIMA_INTERPOLADO", GravedadIncidencia.Aviso,
+                    "Días sin publicar en la estación, rellenados con la media de los tres " +
+                    "anteriores: {0} día(s) ({1}).", fecha);
+            }
             return valor;
         }
 

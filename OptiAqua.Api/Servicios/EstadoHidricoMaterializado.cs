@@ -33,8 +33,9 @@
         ///   1 — primera versión materializada (14/08/2026).
         ///   2 — DatosEstadoHidrico lleva IdTipoEstres, que necesita la barra de severidad
         ///       para saber qué escala de umbrales pintar (14/08/2026).
+        ///   3 — DatosEstadoHidrico lleva la lista de incidencias del cálculo (14/08/2026).
         /// </summary>
-        public const int VersionAlgoritmo = 2;
+        public const int VersionAlgoritmo = 3;
 
         /// <summary>
         /// Estado hídrico de la unidad de cultivo en la fecha indicada.
