@@ -1,35 +1,67 @@
 @model List<Models.DatosEstadoHidrico>
+@using DatosOptiaqua
 @{ ViewBag.Title = "Unidades de cultivo"; }
+
+<style>
+    /* Barra del estado hídrico: el índice va de -1 (marchitez) a 1,2 (exceso), así que la
+       posición del relleno dice de un vistazo dónde está sin tener que leer el número. */
+    .oa-barra { position:relative; height:1.15rem; background:#f1f3f5; border-radius:.25rem; overflow:hidden; min-width:120px; }
+    .oa-barra > i { position:absolute; top:0; bottom:0; left:0; display:block; }
+    .oa-barra > b { position:absolute; top:0; bottom:0; left:0; right:0; font-size:.75rem;
+                    font-weight:600; line-height:1.15rem; text-align:center; }
+    .oa-fila { cursor:pointer; }
+</style>
 
 <h2 class="mb-3">Unidades de cultivo <a class="btn btn-sm btn-outline-secondary ms-2" asp-controller="Home" asp-action="Index">&laquo; Cuadro de mando</a></h2>
 <partial name="_MensajesPanel" />
-<p class="text-muted">Temporada activa <b>@ViewBag.IdTemporada</b> — último estado hídrico calculado. @(ViewBag.NTotal != null && (int)ViewBag.NTotal > 100 ? "Mostrando las primeras 100 de " + ViewBag.NTotal + "." : "")</p>
+
+<form method="get" class="row g-2 align-items-center mb-3">
+    <div class="col-auto">
+        <input type="search" name="buscar" value="@ViewBag.Buscar" class="form-control form-control-sm"
+               style="min-width:280px" placeholder="Unidad, regante, NIF, cultivo o parcela…" />
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary">Buscar</button></div>
+    @if (!string.IsNullOrEmpty(ViewBag.Buscar as string)) {
+        <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" asp-action="UnidadesCultivo">Quitar filtro</a></div>
+    }
+</form>
+
+<p class="text-muted">
+    Temporada activa <b>@ViewBag.IdTemporada</b> — último estado hídrico calculado.
+    @(ViewBag.NTotal != null && (int)ViewBag.NTotal > 100 ? "Mostrando las primeras 100 de " + ViewBag.NTotal + "." : "")
+</p>
 
 <table class="table table-hover table-sm align-middle">
-    <thead><tr><th>Unidad</th><th>Regante</th><th>Cultivo</th><th>Municipio</th><th>Superficie (m²)</th><th>Riego (mm)</th><th>Estado hídrico</th><th></th></tr></thead>
+    <thead><tr><th>Unidad</th><th>Regante</th><th>Cultivo</th><th>Municipio</th><th class="text-end">Superficie (m²)</th><th class="text-end">Riego (mm)</th><th style="min-width:320px">Estado hídrico</th></tr></thead>
     <tbody>
     @foreach (var d in Model) {
         var err = d.Status != null && d.Status.StartsWith("ERROR");
         var aviso = d.Status != null && d.Status.StartsWith("AVISO");
-        <tr class="@(err ? "table-danger" : aviso ? "table-warning" : "")">
-            <td><b>@d.IdUnidadCultivo</b></td>
+        var ficha = Url.Action("UnidadCultivo", "Panel", new { id = d.IdUnidadCultivo });
+        <tr class="oa-fila @(err ? "table-danger" : aviso ? "table-warning" : "")"
+            onclick="location.href='@ficha'" title="Ver la ficha de @d.IdUnidadCultivo">
+            <td><a asp-action="UnidadCultivo" asp-route-id="@d.IdUnidadCultivo" onclick="event.stopPropagation()"><b>@d.IdUnidadCultivo</b></a></td>
             <td>@d.Regante</td>
             <td>@d.Cultivo</td>
             <td>@d.Municipios</td>
-            <td>@(d.SuperficieM2?.ToString("N0"))</td>
-            <td>@(d.SumaRiego?.ToString("N1"))</td>
+            <td class="text-end">@(d.SuperficieM2?.ToString("N0"))</td>
+            <td class="text-end">@(d.SumaRiego?.ToString("N1"))</td>
             <td>
                 @if (err) {
-                    <span class="text-danger" title="@d.Status">error</span>
+                    <span class="text-danger" title="@d.Status">no se puede calcular</span>
                 } else {
-                    <span class="badge" style="background:@(string.IsNullOrEmpty(d.ColorEstres) ? "#6c757d" : d.ColorEstres)">@d.IndiceEstres.ToString("N2")</span>
-                    <small class="text-muted ms-1">@d.DescripcionEstres</small>
+                    <partial name="_BarraEstres" model="d" />
                     @if (aviso) { <span class="badge bg-warning text-dark ms-1" title="@d.Status">estimado</span> }
                 }
             </td>
-            <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="/api/DatosHidricos/@d.IdUnidadCultivo/@(d.Fecha.ToString("yyyy-MM-dd"))" target="_blank">JSON</a></td>
         </tr>
     }
     </tbody>
 </table>
-@if (Model.Count == 0) { <p class="text-muted">No hay unidades de cultivo en la temporada activa.</p> }
+@if (Model.Count == 0) {
+    <p class="text-muted">
+        @(string.IsNullOrEmpty(ViewBag.Buscar as string)
+            ? "No hay unidades de cultivo en la temporada activa."
+            : "Ninguna unidad de cultivo coincide con la búsqueda.")
+    </p>
+}

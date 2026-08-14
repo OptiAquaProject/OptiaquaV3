@@ -1,0 +1,31 @@
+@model Models.DatosEstadoHidrico
+@using DatosOptiaqua
+@*
+    Barra de color del estado hídrico.
+
+    Antes esto era una insignia con `style="background:@Model.ColorEstres"`, y los colores de
+    TipoEstresUmbral vienen SIN almohadilla ("00CD00"): el navegador descartaba la regla y
+    quedaba texto blanco sobre fondo transparente, prácticamente invisible. Ahora el color
+    pasa por Colores.Css.
+
+    El relleno posiciona el índice dentro del recorrido -1 (punto de marchitez) a 1,2 (exceso
+    de agua), que es lo que cubren los umbrales de las dos escalas. El número va FUERA de la
+    barra a propósito: dentro habría que adivinar si el texto se lee sobre el relleno o sobre
+    el hueco, según lo llena que esté.
+*@
+@{
+    const double minimo = -1.0;
+    const double maximo = 1.2;
+    double porcentaje = (Model.IndiceEstres - minimo) / (maximo - minimo) * 100.0;
+    if (porcentaje < 2) { porcentaje = 2; }
+    if (porcentaje > 100) { porcentaje = 100; }
+    string ancho = porcentaje.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+    string fondo = Colores.Css(Model.ColorEstres);
+}
+<div class="d-flex align-items-center gap-2">
+    <span class="oa-barra" title="@Model.DescripcionEstres">
+        <i style="width:@ancho%;background:@fondo"></i>
+    </span>
+    <span class="fw-semibold" style="min-width:2.6rem">@Model.IndiceEstres.ToString("N2")</span>
+</div>
+<small class="text-muted">@Model.DescripcionEstres</small>

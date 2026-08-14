@@ -109,7 +109,7 @@ namespace WebApi {
         }
 
         // ===== Unidades de cultivo + último estado hídrico =====
-        public IActionResult UnidadesCultivo() {
+        public IActionResult UnidadesCultivo(string buscar) {
             var lista = new List<DatosEstadoHidrico>();
             string idTemporada = null;
             try {
@@ -117,13 +117,89 @@ namespace WebApi {
                 var t = DB.Temporada(idTemporada);
                 DateTime fecha = (t != null && t.FechaFinal < DateTime.Today) ? t.FechaFinal : DateTime.Today;
                 List<string> lUC;
-                using (var db = Conexion.Nueva())
-                    lUC = db.Fetch<string>("SELECT DISTINCT IdUnidadCultivo FROM UnidadCultivoCultivo WHERE IdTemporada=@0", idTemporada);
+                using (var db = Conexion.Nueva()) {
+                    // La búsqueda se resuelve en SQL y no sobre los estados ya calculados: si se
+                    // filtrara después, buscar algo que está en la unidad 500 no lo encontraría
+                    // nunca, porque a la pantalla solo llegan las 100 primeras.
+                    var sql = @"SELECT DISTINCT uc.IdUnidadCultivo
+                                FROM UnidadCultivoCultivo uc
+                                LEFT JOIN Regante r ON r.IdRegante = uc.IdRegante
+                                LEFT JOIN Cultivo  c ON c.IdCultivo = uc.IdCultivo
+                                WHERE uc.IdTemporada = @0";
+                    object[] args = new object[] { idTemporada };
+                    if (!string.IsNullOrWhiteSpace(buscar)) {
+                        sql += @" AND (uc.IdUnidadCultivo LIKE @1 OR r.Nombre LIKE @1 OR r.NIF LIKE @1
+                                       OR c.Nombre LIKE @1
+                                       OR EXISTS (SELECT 1 FROM ParcelasDeUC p
+                                                  WHERE p.IdUnidadCultivo = uc.IdUnidadCultivo
+                                                    AND p.IdTemporada = uc.IdTemporada
+                                                    AND p.Descripcion LIKE @1))";
+                        args = new object[] { idTemporada, "%" + buscar.Trim() + "%" };
+                    }
+                    sql += " ORDER BY uc.IdUnidadCultivo";
+                    lUC = db.Fetch<string>(sql, args);
+                }
                 ViewBag.NTotal = lUC.Count;
                 lista = EstadoHidricoMaterializado.ObtenerLista(idTemporada, lUC.Take(100), fecha);
             } catch (Exception ex) { Log.Error("Panel/UnidadesCultivo", ex); TempData["error"] = ex.Message; }
+            ViewBag.Buscar = buscar;
             ViewBag.IdTemporada = idTemporada;
             return View(lista);
+        }
+
+        /// <summary>
+        /// Ficha completa de una unidad de cultivo: de dónde salen sus datos y cómo ha ido la
+        /// campaña. Cada bloque se rellena por separado, para que un fallo en uno —una unidad
+        /// sin suelo, por ejemplo— no deje la pantalla en blanco.
+        /// </summary>
+        /// <param name="id">Identificador de la unidad de cultivo.</param>
+        public IActionResult UnidadCultivo(string id) {
+            if (string.IsNullOrWhiteSpace(id)) {
+                TempData["error"] = "No se ha indicado la unidad de cultivo.";
+                return RedirectToAction("UnidadesCultivo");
+            }
+            var detalle = new DetalleUnidadCultivo { IdUnidadCultivo = id };
+            try {
+                detalle.IdTemporada = DB.TemporadaActiva();
+                var t = DB.Temporada(detalle.IdTemporada);
+                detalle.Fecha = (t != null && t.FechaFinal < DateTime.Today) ? t.FechaFinal : DateTime.Today;
+
+                try { detalle.Estado = EstadoHidricoMaterializado.Obtener(id, detalle.Fecha); }
+                catch (Exception ex) { detalle.ErrorEstado = ex.Message; }
+
+                try {
+                    detalle.IdEstacion = DB.EstacionDeUC(id, detalle.IdTemporada);
+                    detalle.EstacionNombre = DB.EstacionNombre(detalle.IdEstacion);
+                } catch (Exception ex) { Log.Aviso("Panel/UnidadCultivo estación de " + id, ex); }
+
+                try { detalle.Suelo.AddRange(DB.SueloUnidadCultivoTemporada(id, detalle.IdTemporada) ?? new List<DatosSuelo>()); }
+                catch (Exception ex) { detalle.ErrorSuelo = ex.Message; }
+
+                try { detalle.Etapas.AddRange(DB.UnidadCultivoCultivoEtapasList(id, detalle.IdTemporada) ?? new List<UnidadCultivoCultivoEtapas>()); }
+                catch (Exception ex) { detalle.ErrorEtapas = ex.Message; }
+
+                try { detalle.DatosExtra.AddRange(DB.DatosExtraList(id) ?? new List<UnidadCultivoDatosExtra>()); }
+                catch (Exception ex) { detalle.ErrorDatosExtra = ex.Message; }
+
+                // El balance da la evolución y las lluvias tal y como las ha visto el cálculo.
+                DateTime siembra = detalle.Fecha, fin = detalle.Fecha;
+                try {
+                    var bh = BalanceHidrico.Balance(id, detalle.Fecha, false);
+                    if (bh != null && bh.LineasBalance.Count > 0) {
+                        detalle.Lineas.AddRange(bh.LineasBalance);
+                        siembra = bh.unidadCultivoDatosHidricos.FechaSiembra();
+                        fin = bh.LineasBalance[bh.LineasBalance.Count - 1].Fecha ?? detalle.Fecha;
+                    }
+                } catch (Exception ex) { detalle.ErrorBalance = ex.Message; }
+
+                try { detalle.Riegos.AddRange(DB.RiegosList(id, siembra, fin) ?? new List<Riego>()); }
+                catch (Exception ex) { detalle.ErrorRiegos = ex.Message; }
+
+            } catch (Exception ex) {
+                Log.Error("Panel/UnidadCultivo " + id, ex);
+                TempData["error"] = ex.Message;
+            }
+            return View(detalle);
         }
 
         // ===== Eventos con filtro por fechas =====

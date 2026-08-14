@@ -1,4 +1,8 @@
 @model List<Models.DatosEstadoHidrico>
+<style>
+    .oa-barra { position:relative; height:1.15rem; background:#f1f3f5; border-radius:.25rem; overflow:hidden; min-width:120px; }
+    .oa-barra > i { position:absolute; top:0; bottom:0; left:0; display:block; }
+</style>
 @{
     ViewBag.Title = "Mis unidades de cultivo";
     bool esGestor = ViewBag.EsGestor == true;
@@ -31,8 +35,7 @@
                     @if (err) {
                         <span class="text-danger" title="@d.Status">no disponible</span>
                     } else {
-                        <span class="badge" style="background:@(string.IsNullOrEmpty(d.ColorEstres) ? "#6c757d" : d.ColorEstres)">@d.IndiceEstres.ToString("N2")</span>
-                        <small class="text-muted ms-1">@d.DescripcionEstres</small>
+                        <partial name="_BarraEstres" model="d" />
                         @if (aviso) { <span class="badge bg-warning text-dark ms-1" title="@d.Status">estimado</span> }
                     }
                 </td>
