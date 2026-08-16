@@ -157,13 +157,25 @@
             return lRiegos;
         }
 
+        /// <summary>
+        /// Riegos publicados por el servicio externo de los regantes.
+        ///
+        /// La dirección y la clave salen de la configuración: estaban escritas en el código, y
+        /// un repositorio público no es sitio para una credencial. Si no están definidas no se
+        /// llama a nadie y se devuelve null, que es lo que ya esperaba quien llama.
+        /// </summary>
+        /// <param name="desde">Primer día pedido.</param>
+        /// <param name="hasta">Último día pedido.</param>
         public static List<Riego> GetRiegosFromApi(DateTime desde, DateTime hasta) {
+            if (!OptiAqua.Api.Infraestructura.OpcionesRiegosApi.Configurado)
+                return null;
             try {
                 var desdeStr = desde.ToString("yyyy-MM-dd");
                 var hastaStr = hasta.ToString("yyyy-MM-dd");
                 var client = new HttpClient();
-                var request = new HttpRequestMessage(HttpMethod.Get, $"https://optiaqua.dyndns.org/RegantesS3Api/api/riegos/{desdeStr}/{hastaStr}");
-                request.Headers.Add("API_KEY", "");
+                var raiz = OptiAqua.Api.Infraestructura.OpcionesRiegosApi.Url.TrimEnd('/');
+                var request = new HttpRequestMessage(HttpMethod.Get, $"{raiz}/api/riegos/{desdeStr}/{hastaStr}");
+                request.Headers.Add("API_KEY", OptiAqua.Api.Infraestructura.OpcionesRiegosApi.Clave);
                 var response = client.SendAsync(request).Result;
                 response.EnsureSuccessStatusCode();
                 var json = response.Content.ReadAsStringAsync().Result;

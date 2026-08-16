@@ -2,131 +2,76 @@
 
 Aplicación para la optimización del regadío. Calcula, día a día y para cada unidad de
 cultivo, cuánta agua queda disponible en el suelo y cuándo conviene regar, a partir del
-**balance hídrico FAO-56** alimentado con los datos climáticos del **SIAR de La Rioja**,
-la textura del suelo de cada parcela y los riegos ya aplicados.
+**balance hídrico FAO-56** alimentado con los datos climáticos del **SIAR de La Rioja**, la
+textura del suelo de cada parcela y los riegos ya aplicados.
 
-La usan tres perfiles:
-
-| Perfil | Qué ve |
-|---|---|
-| **Regante** | El estado de sus unidades de cultivo y la recomendación de riego. |
-| **Gestor** | Lo mismo, para los regantes a los que representa. |
-| **Administrador** | Cuadro de mando, gestión de regantes, parcelas, temporadas y mapas, y el laboratorio de cálculo. |
-
-Además de la web hay una **API REST** (`/api/…`, documentada en `/swagger`) que es la que
-consume la aplicación móvil.
-
----
+La usan los regantes (el estado de sus parcelas y la recomendación de riego), los gestores
+que les representan y los administradores. Además de la web hay una **API REST** (`/api/…`,
+documentada en `/swagger`) que es la que consume la aplicación móvil.
 
 ## Cómo se calcula
 
-El motor es un balance de agua en el suelo, día a día, desde la siembra:
+Un balance de agua en el suelo, día a día, desde la siembra:
 
 ```
 agotamiento(D) = agotamiento(D-1) + ETc(D) − lluvia efectiva(D) − riego efectivo(D) + drenaje(D)
 ```
 
-- **ETc = ETo × Kc ajustado × Ks**. La ETo viene del SIAR; el Kc, de la etapa de desarrollo
-  en curso; el Ks es el coeficiente de estrés, que frena el consumo cuando el suelo se seca.
-- **Capacidad de campo y punto de marchitez** salen de la textura de cada horizonte
-  (arena, limo, arcilla, materia orgánica y elementos gruesos) por las ecuaciones de
-  **Saxton-Rawls**, integrando por horizontes hasta donde llega la raíz.
-- Las **etapas de desarrollo** avanzan por integral térmica o por días, según el cultivo.
+**ETc = ETo × Kc ajustado × Ks**: la ETo viene del SIAR, el Kc de la etapa de desarrollo en
+curso y el Ks frena el consumo cuando el suelo se seca. La capacidad de campo y el punto de
+marchitez salen de la textura de cada horizonte por las ecuaciones de **Saxton-Rawls**,
+integrando hasta donde llega la raíz.
 
-De ahí salen el índice de estrés, los días que quedan hasta el próximo riego y el tiempo
-de riego recomendado.
+Todas las mañanas a las 9:00 se descarga el SIAR, se recalculan los suelos y se actualiza el
+estado hídrico de todas las unidades de cultivo, en ese orden, porque el balance lee suelo y
+clima.
 
-El detalle está en [`COMO-SE-CALCULA.md`](COMO-SE-CALCULA.md), la auditoría del modelo en
-[`AUDITORIA-CALCULO.md`](AUDITORIA-CALCULO.md) y las correcciones aplicadas en
-[`CORRECCIONES-CALCULO.md`](CORRECCIONES-CALCULO.md).
+Cuando falta un dato el cálculo no se abandona: se apaña —la media histórica del mes si no
+hay clima— y **queda anotado**. Cada resultado lleva su lista de incidencias, en ámbar cuando
+el número se apoya en estimaciones y en rojo solo cuando no ha habido forma de calcular.
 
-### El cálculo se completa siempre que puede, y lo dice
-
-Cuando falta un dato, el cálculo no se abandona: se apaña y **queda anotado**. Si no hay
-clima de un día se usa la media histórica de ese mes; si un parámetro de etapa no está, se
-sigue sin él. Cada resultado lleva su lista de incidencias, que la pantalla enseña: ámbar
-cuando hay número pero se apoya en estimaciones, rojo solo cuando no ha habido forma de
-calcular. Un balance con datos inventados tiene la misma pinta que uno bueno, y esa es
-precisamente la confusión que las incidencias evitan.
-
-### Una pasada diaria
-
-Todas las mañanas a las 9:00 (hora de España, fijada explícitamente) se ejecuta, en este
-orden: descarga del SIAR → recálculo de suelos → estado hídrico de todas las unidades de
-cultivo. El orden importa, porque el balance lee suelo y clima. Del SIAR se piden varios
-días atrás, porque publica correcciones, pero **solo se escribe lo que ha cambiado de
-verdad**, y ese cambio es lo que invalida los resultados guardados.
-
----
+El detalle está en [`COMO-SE-CALCULA.md`](COMO-SE-CALCULA.md).
 
 ## LAB-ONE
 
-Un banco de pruebas del cálculo. Se copia una unidad de cultivo entera a memoria y desde
-ahí se puede cambiar **cualquier** dato de entrada —superficie, pluviometría, eficiencia
-de riego, profundidad de raíz, etapas, horizontes de suelo, serie climática, riegos— y
-recalcular las veces que haga falta. Nada de lo que se hace en LAB-ONE llega a la base de
-datos. Los ensayos se guardan en JSON, que es también la forma de compartirlos.
-
-Sirve para contestar preguntas del tipo «¿y si el año hubiera sido un 20% más seco?» o
-«¿cuánto cambia la recomendación si el suelo tuviera un horizonte más?» sin tocar nada.
-
----
+Un banco de pruebas del cálculo. Copia una unidad de cultivo entera a memoria y permite
+cambiar cualquier dato de entrada —suelo, clima, etapas, riegos, superficie— y recalcular
+las veces que haga falta, sin escribir nada en la base de datos. Los ensayos se guardan en
+JSON.
 
 ## Puesta en marcha
 
 ```bash
-dotnet build
-```
-
-**Los secretos no están en el repositorio y la aplicación se niega a arrancar sin ellos.**
-Para depurar, copia la plantilla y pon tus valores:
-
-```bash
 cp OptiAqua.Api/appsettings.local.ejemplo.json OptiAqua.Api/appsettings.local.json
-```
-
-`appsettings.local.json` está en `.gitignore`, no se copia al publicar y manda sobre todo
-lo demás. Es lo único que hace falta para arrancar en local.
-
-En un servidor, por variables de entorno: `ConnectionStrings__OptiAqua` y
-`Jwt__ClaveSecreta`. También valen los secretos de usuario
-(`dotnet user-secrets set … --project OptiAqua.Api`).
-
-```bash
 dotnet run --project OptiAqua.Api
 ```
 
-Los scripts de migración de la base de datos están en [`sql/`](sql); se aplican a mano.
+**Los secretos no están en el repositorio y la aplicación se niega a arrancar sin ellos.**
+`appsettings.local.json` está en `.gitignore`, no se copia al publicar y manda sobre todo lo
+demás. En un servidor, por variables de entorno (`ConnectionStrings__OptiAqua`,
+`Jwt__ClaveSecreta`) o por secretos de usuario.
 
----
+Los scripts de migración de la base de datos están en [`sql/`](sql) y se aplican a mano.
 
 ## Cómo está montado
 
-.NET 10, ASP.NET Core MVC para la web y controladores de API para el móvil, **NPoco**
-sobre SQL Server. Sin frameworks de JavaScript: las gráficas se dibujan en SVG en el
-servidor y el mapa usa Leaflet servido desde `wwwroot`.
+.NET 10, ASP.NET Core MVC para la web y controladores de API para el móvil, **NPoco** sobre
+SQL Server, **Quartz** para la pasada diaria. Sin frameworks de JavaScript: las gráficas se
+dibujan en SVG en el servidor y el mapa usa Leaflet servido desde `wwwroot`.
 
 ```
 OptiAqua.Api/
-  Controllers/Api/     endpoints REST que consume el móvil
-  Controllers/Web/     pantallas: cuadro de mando, panel, importación, LAB-ONE
-  Servicios/           el motor: BalanceHidrico, CalculosHidricos, DatosHidricos,
-                       caché, SIAR, materialización del estado hídrico
-  Datos/               acceso a datos (DB, en parciales por dominio)
-  Modelos/             POCOs y modelos de pantalla
-  Seguridad/           autenticación por cookie (web) y JWT/clave de API (móvil)
-  Infraestructura/     conexión, arranque, tareas programadas, registro
-  Views/               Razor
-sql/                   scripts de migración
+  Controllers/     Api/ para el móvil, Web/ para las pantallas
+  Servicios/       el motor de cálculo, la caché, el SIAR
+  Datos/           acceso a datos, en parciales por dominio
+  Modelos/         POCOs y modelos de pantalla
+  Seguridad/       cookie para la web, JWT o clave de API para el móvil
+  Infraestructura/ arranque, conexión, tareas programadas, registro
 ```
 
-Autenticación: la web va por **cookie**; la API, por **JWT o clave de API**. Una pantalla
-MVC tiene que declarar `AuthenticationSchemes = "Cookies"` explícitamente, porque la
+Una pantalla MVC tiene que declarar `AuthenticationSchemes = "Cookies"` explícitamente: la
 política por defecto es la de la API y si no responde 401.
-
----
 
 ## Estado
 
-En desarrollo activo. Lo pendiente y lo decidido está anotado en
-[`MIGRACION.md`](MIGRACION.md) y en los documentos de cálculo.
+En desarrollo activo. Ver [`MIGRACION.md`](MIGRACION.md).

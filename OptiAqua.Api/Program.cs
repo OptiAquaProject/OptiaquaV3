@@ -68,6 +68,13 @@ try {
         jwtClave, jwtEmisor, jwtAudiencia,
         config.GetValue<int>("Jwt:CaducidadMinutos"));
 
+    // Servicio externo de riegos. Opcional: si no está configurado no se llama y quien lo pide
+    // recibe "no hay datos", que es lo que ya sabía manejar.
+    OptiAqua.Api.Infraestructura.OpcionesRiegosApi.Configura(
+        config["RiegosApi:Url"], config["RiegosApi:Clave"]);
+    if (!OptiAqua.Api.Infraestructura.OpcionesRiegosApi.Configurado)
+        Log.Warning("El servicio externo de riegos no está configurado (RiegosApi:Url / RiegosApi:Clave): no se descargarán riegos de fuera.");
+
     // -----------------------------------------------------------------------------------
     // Servicios
     // -----------------------------------------------------------------------------------
