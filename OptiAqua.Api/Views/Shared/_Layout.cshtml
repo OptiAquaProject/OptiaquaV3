@@ -46,7 +46,12 @@
                                 LAB-ONE
                             </a>
                         </li>
-                        <li class="nav-item"><a class="nav-link" href="/swagger">API</a></li>
+                        @* Solo si Swagger está realmente publicado en esta instancia. Fuera de
+                           desarrollo hay que habilitarlo con Swagger:Habilitado; sin eso el
+                           enlace llevaba a un 404. *@
+                        @if (OptiAqua.Api.Infraestructura.OpcionesSwagger.Habilitado) {
+                            <li class="nav-item"><a class="nav-link" href="/swagger">API</a></li>
+                        }
                     }
                 </ul>
                 <ul class="navbar-nav ms-auto align-items-center">

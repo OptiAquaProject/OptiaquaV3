@@ -17,16 +17,10 @@
         <h2>Importación de fichero para la creación masiva de unidades de culvivo.</h2>        
         <p><a class="btn btn-outline-info" href="@Url.Action("especificacionesimportacion", "importacion")">Especificaciones Importación &raquo;</a></p>
         <form class="md-form">
-            <div class="form-row">
-                <div class="form-group col-md-6">
-                    <label for="NifRegante">Datos de las cuenta de administración</label>
-                    <input type="text" class="form-control" id="NifRegante" placeholder="Usuario">
-                </div>
-                <div class="form-group col-md-6 mt-2">
-                    <input type="password" class="form-control" id="PassRegante" placeholder="Contraseña">
-                </div>
-            </div>
-            <hr />
+            @* Aquí había un usuario y una contraseña. No los leia nadie: la acción de
+               importar ya exige sesión de administrador, y lo que se escribiera en esas
+               casillas se mandaba al servidor y se tiraba. Pedir una contraseña que no se
+               comprueba es peor que no pedirla: acostumbra a teclearla donde no toca. *@
             <div class="input-group ">
                 <div class="custom-file" style="width:600px">
                     <input type="file" class="custom-file-input" id="IdFileName">

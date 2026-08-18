@@ -218,7 +218,36 @@ try {
     app.UseAuthentication();
     app.UseAuthorization();
 
-    if (app.Environment.IsDevelopment()) {
+    // Documentación interactiva de la API. En desarrollo, siempre; fuera de desarrollo solo si
+    // se pide explícitamente con Swagger:Habilitado, y entonces **detrás de la sesión de
+    // administrador**: publica la superficie entera de la API, y en una instalación abierta a
+    // los regantes eso es un plano del edificio para cualquiera que pase por la URL.
+    //
+    // El estado se guarda para que la barra de navegación no enseñe el enlace cuando no lleva
+    // a ninguna parte, que es lo que pasaba antes en producción.
+    bool swaggerHabilitado = app.Environment.IsDevelopment()
+                             || config.GetValue<bool>("Swagger:Habilitado");
+    bool swaggerSoloAdmin = swaggerHabilitado && !app.Environment.IsDevelopment();
+    OptiAqua.Api.Infraestructura.OpcionesSwagger.Configura(swaggerHabilitado, swaggerSoloAdmin);
+
+    if (swaggerHabilitado) {
+        if (swaggerSoloAdmin) {
+            // Va aquí y no como filtro porque Swagger es middleware, no un endpoint: no hay
+            // dónde colgarle un [Authorize]. Se mira la identidad que ya dejó UseAuthentication.
+            app.UseWhen(
+                ctx => ctx.Request.Path.StartsWithSegments("/swagger"),
+                rama => rama.Use(async (ctx, siguiente) => {
+                    if (ctx.User?.Identity?.IsAuthenticated != true) {
+                        ctx.Response.Redirect("/Cuenta/Login");
+                        return;
+                    }
+                    if (!ctx.User.IsInRole("admin")) {
+                        ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return;
+                    }
+                    await siguiente();
+                }));
+        }
         app.UseSwagger();
         app.UseSwaggerUI();
     }

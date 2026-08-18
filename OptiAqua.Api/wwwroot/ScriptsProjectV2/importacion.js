@@ -6,15 +6,8 @@ function OnImportar() {
         return;
     }
 
-    var NifRegante = document.getElementById("NifRegante").value;
-    var PassRegante = document.getElementById("PassRegante").value;
-
-
     var formdata = new FormData(); //FormData object    
     formdata.append(fileInput.files[0].name, fileInput.files[0]);
-    formdata.append("NifRegante", NifRegante);
-    formdata.append("PassRegante", PassRegante);
-
     //Creating an XMLHttpRequest and sending
     var xhr = new XMLHttpRequest();
     xhr.open('POST', urlPost);
