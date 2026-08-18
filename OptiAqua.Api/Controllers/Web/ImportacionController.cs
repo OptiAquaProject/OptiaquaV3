@@ -26,18 +26,11 @@ namespace WebApi {
             return View();
         }
 
-        public IActionResult ImportacionAnalisisSuelo() {
-            ViewBag.Title = "Importación masiva de análisis de suelos";
-            return View();
-        }
 
         public IActionResult EspecificacionesImportacion() {
             return View();
         }
 
-        public IActionResult EspecificacionesimportacionAnalisisSuelo() {
-            return View();
-        }
 
         public IActionResult ImportacionMapas() {
             var lMapaVersion = DB.DatosMapasVersion();
